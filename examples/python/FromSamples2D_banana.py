@@ -21,70 +21,75 @@ test_x = np.vstack([test_x1,test_x2])
 
 
 # For plotting and computing reference density 
-rho = multivariate_normal(np.zeros(2),np.eye(2))  #standard normal
+ref_distribution = multivariate_normal(np.zeros(2),np.eye(2))  #standard normal
 t = np.linspace(-5,5,100)
 grid = np.meshgrid(t,t)
-rho_t = rho.pdf(np.dstack(grid))
-
+ref_pdf_at_grid = ref_distribution.pdf(np.dstack(grid))
 
 
 # Set-up map and initize map coefficients
-opts = MapOptions()
-tri_map = CreateTriangular(2,2,2,opts)
-coeffs = np.zeros(tri_map.numCoeffs)
-tri_map.SetCoeffs(coeffs)
+map_options = MapOptions()
+transport_map = CreateTriangular(2,2,2,map_options)
+coeffs = np.zeros(transport_map.numCoeffs)
+transport_map.SetCoeffs(coeffs)
 
 
 # KL divergence objective
-def obj(coeffs, tri_map, x):
-    tri_map.SetCoeffs(coeffs)
-    map_of_x = tri_map.Evaluate(x)
-    rho_of_map_of_x = rho.logpdf(map_of_x.T)
-    log_det = tri_map.LogDeterminant(x)
-    return -np.sum(rho_of_map_of_x + log_det)/num_points
+def obj(coeffs, transport_map, x):
+    transport_map.SetCoeffs(coeffs)
+    map_of_x = transport_map.Evaluate(x)
+    ref_logpdf = ref_distribution.logpdf(map_of_x.T)
+    log_det = transport_map.LogDeterminant(x)
+    return -np.sum(ref_logpdf + log_det)/num_points
 
 
-def grad_obj(coeffs, tri_map, x):
-    tri_map.SetCoeffs(coeffs)
-    map_of_x = tri_map.Evaluate(x)
-    grad_rho_of_map_of_x = -tri_map.CoeffGrad(x, map_of_x)
-    grad_log_det = tri_map.LogDeterminantCoeffGrad(x)
-    return -np.sum(grad_rho_of_map_of_x + grad_log_det, 1)/num_points
+def grad_obj(coeffs, transport_map, x):
+    transport_map.SetCoeffs(coeffs)
+    map_of_x = transport_map.Evaluate(x)
+    grad_ref_logpdf = -transport_map.CoeffGrad(x, map_of_x)
+    grad_log_det = transport_map.LogDeterminantCoeffGrad(x)
+    return -np.sum(grad_ref_logpdf + grad_log_det, 1)/num_points
 
 
-
-# Before optimization
-map_of_x = tri_map.Evaluate(x) 
+# Before optimization plot
+map_of_x = transport_map.Evaluate(x) 
 plt.figure()
-plt.contour(*grid, rho_t)
+plt.contour(*grid, ref_pdf_at_grid)
 plt.scatter(test_x[0],test_x[1], facecolor='blue', alpha=0.1, label='Target samples')
 plt.legend()
 plt.show()
 
-# Optimize
+
+# Print initial coeffs and objective
 print('Starting coeffs')
-print(tri_map.CoeffMap())
-print('and error: {:.2E}'.format(obj(tri_map.CoeffMap(), tri_map, x)))
+print(transport_map.CoeffMap())
+print('and error: {:.2E}'.format(obj(transport_map.CoeffMap(), transport_map, x)))
 print('==================')
 
-options={'gtol': 1e-16, 'disp': True}
-res = minimize(obj, tri_map.CoeffMap(), args=(tri_map, x), jac=grad_obj, method='BFGS', options=options)
 
+# Optimize
+optimizer_options={'gtol': 1e-16, 'disp': True}
+res = minimize(obj, transport_map.CoeffMap(), args=(transport_map, x), jac=grad_obj, method='BFGS', options=optimizer_options)
+
+
+# Print final coeffs and objective
 print('Final coeffs')
-print(tri_map.CoeffMap())
-print('and error: {:.2E}'.format(obj(tri_map.CoeffMap(), tri_map, x)))
+print(transport_map.CoeffMap())
+print('and error: {:.2E}'.format(obj(transport_map.CoeffMap(), transport_map, x)))
 print('==================')
-# After optimization
-map_of_test_x = tri_map.Evaluate(test_x)
+
+
+# After optimization plot
+map_of_test_x = transport_map.Evaluate(test_x)
 plt.figure()
-plt.contour(*grid, rho_t)
-plt.scatter(map_of_test_x[0],map_of_test_x[1], facecolor='blue', alpha=0.1, label='Target samples')
+plt.contour(*grid, ref_pdf_at_grid)
+plt.scatter(map_of_test_x[0],map_of_test_x[1], facecolor='blue', alpha=0.1, label='Normalized samples')
 plt.legend()
 plt.show()
 
 
+# Print statistics of normalized samples (TODO replace with better Gaussianity check)
 print('==================')
-
 mean_of_map = np.mean(map_of_test_x,1)
 print("Mean of normalized test samples")
 print(mean_of_map)
@@ -92,4 +97,3 @@ print('==================')
 print("Cov of normalized test samples")
 cov_of_map = np.cov(map_of_test_x)
 print(cov_of_map)
-
