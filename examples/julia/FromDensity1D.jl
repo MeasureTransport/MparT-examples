@@ -1,4 +1,5 @@
-include("/home/dannys4/installs/MPART/julia/mpart/MParT.jl")
+include("MParT.jl")
+##
 using .MParT, CxxWrap
 using Distributions, Optimization, OptimizationOptimJL
 
