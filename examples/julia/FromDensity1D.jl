@@ -45,11 +45,11 @@ function objective(coeffs,_)
     -sum(vec(pi_of_map_of_x) + log_det)/num_points
 end
 
-prob = OptimizationProblem(objective, [0.,0.], nothing)
+u0 = CoeffMap(monotoneMap)
+prob = OptimizationProblem(objective, u0, nothing)
 
 # Optimize
 println("Starting Coeffs")
-u0 = CoeffMap(monotoneMap)
 println(u0)
 println("And error $(objective(u0,nothing))")
 sol = solve(prob, NelderMead())
