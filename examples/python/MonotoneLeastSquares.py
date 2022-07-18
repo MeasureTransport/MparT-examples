@@ -50,7 +50,7 @@ error_before = objective(monotone_map.CoeffMap(), monotone_map, x, y_measured)
 
 
 # Optimize
-optimizer_options={'gtol': 1e-8, 'disp': True}
+optimizer_options={'gtol': 1e-4, 'disp': True}
 res = minimize(objective, monotone_map.CoeffMap(), args=(monotone_map, x, y_measured), jac=grad_objective, method='BFGS', options=optimizer_options)
 
 

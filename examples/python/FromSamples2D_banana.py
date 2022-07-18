@@ -52,7 +52,6 @@ def grad_obj(coeffs, transport_map, x):
 
 
 # Before optimization plot
-map_of_x = transport_map.Evaluate(x) 
 plt.figure()
 plt.contour(*grid, ref_pdf_at_grid)
 plt.scatter(test_x[0],test_x[1], facecolor='blue', alpha=0.1, label='Target samples')
@@ -68,7 +67,7 @@ print('==================')
 
 
 # Optimize
-optimizer_options={'gtol': 1e-16, 'disp': True}
+optimizer_options={'gtol': 1e-4, 'disp': True}
 res = minimize(obj, transport_map.CoeffMap(), args=(transport_map, x), jac=grad_obj, method='BFGS', options=optimizer_options)
 
 
