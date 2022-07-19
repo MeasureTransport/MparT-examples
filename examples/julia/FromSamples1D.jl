@@ -20,8 +20,7 @@ function sinharcsinh(z;loc,scale,skew,tail)
     loc + scale*f
 end
 
-##
-# Make target samples
+## Make target samples
 num_points = 1000
 z = randn(num_points)
 x = reshape(sinharcsinh.(z, loc=-1, scale=1, skew=.5, tail=1), 1, num_points)
@@ -41,15 +40,14 @@ if make_plot
     axislegend(ax1)
     display(fig)
 end
-##
-# Create multi-index set:
+
+## Create multi-index set:
 multis = reshape(0:5, 6, 1)
 mset = MultiIndexSet(multis)
 fixed_mset = Fix(mset, true)
 
 # Set MapOptions and make map
-opts = MapOptions()
-BasisType!(opts, MParT.HermiteFunctions)
+opts = MapOptions(basisType = BasisTypes.HermiteFunctions)
 monotoneMap = CreateComponent(fixed_mset, opts)
 
 # KL divergence objective
@@ -64,8 +62,7 @@ end
 u0 = CoeffMap(monotoneMap)
 prob = OptimizationProblem(objective, u0, nothing)
 
-##
-# Optimize
+## Optimize
 println("Starting coeffs")
 println(u0)
 println("and error: $(objective(u0, nothing))")
@@ -76,8 +73,7 @@ println("Final coeffs")
 println(u_final)
 println("and error: $(objective(u_final, nothing))")
 
-##
-# After optimization plot
+## After optimization plot
 map_of_x = Evaluate(monotoneMap, x)
 if make_plot
     fig = Figure()
