@@ -1,0 +1,21 @@
+channels:
+- conda-forge
+dependencies:
+# Jupyter
+- jupyterlab
+- ipywidgets
+- widgetsnbextension
+- matplotlib
+- pandas
+- python
+- scipy 
+- numpy 
+# MParT Dependencies
+- pybind11
+- eigen
+- cmake 
+- make
+- git 
+- eigen 
+- gxx 
+

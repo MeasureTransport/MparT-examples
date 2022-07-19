@@ -1,0 +1,8 @@
+#!/bin/bash
+
+export PYTHONPATH=$PYTHONPATH:~/.installations/MParT/python
+export OMP_PROC_BIND=spread
+export OMP_PLACES=threads
+export KOKKOS_NUM_THREADS=4
+
+exec "$@"
