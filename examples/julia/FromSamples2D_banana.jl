@@ -12,13 +12,13 @@ end
 num_points = 1000
 z = randn(2,num_points)
 x1 = z[1,:]
-x2 = z[1,:] + z[2,:].^2
+x2 = z[2,:] + z[1,:].^2
 x = collect([x1 x2]')
 
 test_n_pts = 10_000
 test_z = randn(2,test_n_pts)
 test_x1 = test_z[1,:]
-test_x2 = test_z[1,:] + test_z[2,:].^2
+test_x2 = test_z[2,:] + test_z[1,:].^2
 test_x = collect([test_x1 test_x2]')
 
 # For Plotting and computing reference density
@@ -28,8 +28,8 @@ rho_t = [pdf(rho, [t1,t2]) for t1 in t, t2 in t]
 
 ## Set up map and initialize coefficients
 opts = MapOptions()
-tri_map = MParT.CreateTriangular(2,2,2,opts)
-coeffs = zeros(MParT.numCoeffs(tri_map))
+tri_map = CreateTriangular(2,2,2,opts)
+coeffs = zeros(numCoeffs(tri_map))
 
 function obj(coeffs, nothing)
     SetCoeffs(tri_map, coeffs)
@@ -69,7 +69,7 @@ println("Starting coeffs")
 println(u0)
 println("and error: $(obj(u0,nothing))")
 println("===================")
-@time(sol = solve(prob, BFGS()))
+@time(sol = solve(prob, BFGS()));
 ##
 u_final = sol.u
 SetCoeffs(tri_map, u_final)

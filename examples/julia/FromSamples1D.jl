@@ -29,7 +29,7 @@ num_points = 1000
 z = randn(num_points)
 x = reshape(sinharcsinh.(z, loc=-1, scale=1, skew=.5, tail=1), 1, num_points)
 
-# For plotting and computing reference density 
+# For plotting and computing reference density
 rv = Normal()
 t = range(-3,3,length=100)
 rho_t = pdf.(rv, t)
@@ -52,7 +52,7 @@ fixed_mset = Fix(mset, true)
 
 # Set MapOptions and make map
 opts = MapOptions()
-MParT.BasisType!(opts, MParT.HermiteFunctions)
+BasisType!(opts, MParT.HermiteFunctions)
 monotoneMap = CreateComponent(fixed_mset, opts)
 
 # KL divergence objective
