@@ -20,15 +20,14 @@ t = range(-3,6,length=100)
 rho_t = pdf.(rv, t)
 
 num_bins = 50
-fig = nothing
 if make_plot
     fig = Figure()
     ax1 = Axis(fig[1,1], title="Before Optimization")
     hist!(ax1, x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="ReferenceSamples")
     scatter!(ax1, t, rho_t, color=:red, label="Target Density")
     axislegend(ax1)
+    display(fig)
 end
-fig
 
 ##
 A = reshape(Cint[0,1],2,1) # makes vector into matrix, need Cint for typing
@@ -63,9 +62,10 @@ println("And error $(objective(u_final,nothing))")
 ## After optimization Plot
 map_of_x = Evaluate(monotoneMap, x)
 if make_plot
-    ax2 = Axis(fig[2,1], title="After Optimization")
+    fig = Figure()
+    ax2 = Axis(fig[1,1], title="After Optimization")
     hist!(ax2, map_of_x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="OptimizedSamples")
     scatter!(ax2, t, rho_t, color=:red, label="Target Density")
     axislegend(ax2)
+    display(fig)
 end
-fig

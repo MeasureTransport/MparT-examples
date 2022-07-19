@@ -49,13 +49,13 @@ end
 
 ## Plot before Optimization
 map_of_x = Evaluate(tri_map, x)
-fig = nothing
 if make_plot
     fig = Figure()
     ax1 = Axis(fig[1,1], title="Before Optimization")
     contour!(ax1, t, t, rho_t)
     scatter!(ax1, test_x[1,:], test_x[2,:], color=(:blue,0.5), label="Target Samples")
     axislegend(ax1)
+    display(fig)
 end
 
 u0 = CoeffMap(tri_map)
@@ -79,10 +79,12 @@ println("and error: $(obj(u_final,nothing))")
 println("===================")
 map_of_test_x = Evaluate(tri_map, test_x)
 if make_plot
-    ax2 = Axis(fig[2,1], title="After Optimization")
+    fig = Figure()
+    ax2 = Axis(fig[1,1], title="After Optimization")
     contour!(ax2, t, t, rho_t)
     scatter!(ax2, map_of_test_x[1,:], map_of_test_x[2,:], color=(:blue,0.5), label="Target Samples")
     axislegend(ax2)
+    display(fig)
 end
 mean_of_map = mean(map_of_test_x, dims=2)
 cov_of_map = cov(map_of_test_x, dims=2)
@@ -90,4 +92,3 @@ println("Mean of map")
 println(mean_of_map)
 println("Covariance of map")
 println(cov_of_map)
-fig
