@@ -2,7 +2,7 @@
 
 using namespace mpart; 
 
-void LevenbergMarquadtSolver(std::shared_ptr<ConditionalMapBase<Kokkos::HostSpace>> map, 
+void LevenbergMarquardtSolver(std::shared_ptr<ConditionalMapBase<Kokkos::HostSpace>> map, 
                              Eigen::MatrixXd                                 const& x, 
                              Eigen::VectorXd                                 const& y)
 {
