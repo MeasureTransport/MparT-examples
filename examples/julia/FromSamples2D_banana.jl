@@ -1,12 +1,10 @@
-include("MParT.jl")
-##
-using .MParT, CxxWrap
+using MParT, CxxWrap
 using Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL
 
 make_plot = true
 
 if make_plot
-    using CairoMakie
+    using GLMakie
 end
 ##
 num_points = 1000

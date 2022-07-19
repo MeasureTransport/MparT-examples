@@ -1,13 +1,10 @@
-
-include("MParT.jl")
-##
-using .MParT, CxxWrap
+using MParT, CxxWrap
 using Distributions, Optimization, OptimizationOptimJL
 
 make_plot = true
 
 if make_plot
-    using CairoMakie
+    using GLMakie
 end
 
 raw"""
@@ -46,7 +43,7 @@ if make_plot
 end
 ##
 # Create multi-index set:
-multis = reshape(Cint.(0:5), 6, 1)
+multis = reshape(0:5, 6, 1)
 mset = MultiIndexSet(multis)
 fixed_mset = Fix(mset, true)
 

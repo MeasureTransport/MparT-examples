@@ -1,12 +1,10 @@
-include("MParT.jl")
-##
-using .MParT, CxxWrap
+using MParT, CxxWrap
 using Distributions, Optimization, OptimizationOptimJL
 
 make_plot = true
 
 if make_plot
-    using CairoMakie
+    using GLMakie
 end
 ##
 
@@ -23,14 +21,14 @@ num_bins = 50
 if make_plot
     fig = Figure()
     ax1 = Axis(fig[1,1], title="Before Optimization")
-    hist!(ax1, x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="ReferenceSamples")
+    hist!(ax1, x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Reference Samples")
     scatter!(ax1, t, rho_t, color=:red, label="Target Density")
     axislegend(ax1)
     display(fig)
 end
 
 ##
-A = reshape(Cint[0,1],2,1) # makes vector into matrix, need Cint for typing
+A = reshape(0:1,2,1) # The ;; makes a single row matrix then transpose for single column
 mset = MultiIndexSet(A)
 fixed_mset = Fix(mset, true)
 opts = MapOptions()
@@ -64,7 +62,7 @@ map_of_x = Evaluate(monotoneMap, x)
 if make_plot
     fig = Figure()
     ax2 = Axis(fig[1,1], title="After Optimization")
-    hist!(ax2, map_of_x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="OptimizedSamples")
+    hist!(ax2, map_of_x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Optimized Samples")
     scatter!(ax2, t, rho_t, color=:red, label="Target Density")
     axislegend(ax2)
     display(fig)

@@ -1,12 +1,10 @@
-include("MParT.jl")
-##
-using .MParT, CxxWrap
+using MParT, CxxWrap
 using Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL
 
 make_plot = true
 
 if make_plot
-    using CairoMakie
+    using GLMakie
 end
 ##
 
@@ -25,7 +23,7 @@ y_noise = noisesd*randn(1,num_points)
 y_measured = y_true + y_noise
 
 # Create MultiIndexSet
-multis = Cint.(reshape(0:5, 6, 1))
+multis = reshape(0:5, 6, 1)
 mset = MultiIndexSet(multis)
 fixed_mset = Fix(mset, true)
 
