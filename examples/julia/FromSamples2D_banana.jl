@@ -20,9 +20,9 @@ test_x2 = test_z[2,:] + test_z[1,:].^2
 test_x = collect([test_x1 test_x2]')
 
 # For Plotting and computing reference density
-rho = MvNormal(I(2))
+reference_density = MvNormal(I(2))
 t = range(-5,5,length=100)
-rho_t = [pdf(rho, [t1,t2]) for t1 in t, t2 in t]
+reference_density_pdf = [pdf(reference_density, [t1,t2]) for t1 in t, t2 in t]
 
 ## Set up map and initialize coefficients
 opts = MapOptions()
@@ -32,17 +32,17 @@ coeffs = zeros(numCoeffs(tri_map))
 function obj(coeffs, nothing)
     SetCoeffs(tri_map, coeffs)
     map_of_x = Evaluate(tri_map, x)
-    rho_of_map_of_x = logpdf(rho, map_of_x)
+    ref_density_of_map_of_x = logpdf(reference_density, map_of_x)
     log_det = LogDeterminant(tri_map, x)
-    -sum(rho_of_map_of_x + log_det)/num_points
+    -sum(ref_density_of_map_of_x + log_det)/num_points
 end
 
 function grad_obj(g, coeffs, nothing)
     SetCoeffs(tri_map, coeffs)
     map_of_x = Evaluate(tri_map, x)
-    grad_rho_of_map_of_x = -CoeffGrad(tri_map, x, map_of_x)
+    grad_ref_density_of_map_of_x = -CoeffGrad(tri_map, x, map_of_x)
     grad_log_det = LogDeterminantCoeffGrad(tri_map, x)
-    g .= -sum(grad_rho_of_map_of_x + grad_log_det, dims=2)/num_points
+    g .= -sum(grad_ref_density_of_map_of_x + grad_log_det, dims=2)/num_points
 end
 
 ## Plot before Optimization
@@ -50,7 +50,7 @@ map_of_x = Evaluate(tri_map, x)
 if make_plot
     fig = Figure()
     ax1 = Axis(fig[1,1], title="Before Optimization")
-    contour!(ax1, t, t, rho_t)
+    contour!(ax1, t, t, reference_density_pdf)
     scatter!(ax1, test_x[1,:], test_x[2,:], color=(:blue,0.5), label="Target Samples")
     axislegend(ax1)
     display(fig)
@@ -79,7 +79,7 @@ map_of_test_x = Evaluate(tri_map, test_x)
 if make_plot
     fig = Figure()
     ax2 = Axis(fig[1,1], title="After Optimization")
-    contour!(ax2, t, t, rho_t)
+    contour!(ax2, t, t, reference_density_pdf)
     scatter!(ax2, map_of_test_x[1,:], map_of_test_x[2,:], color=(:blue,0.5), label="Target Samples")
     axislegend(ax2)
     display(fig)

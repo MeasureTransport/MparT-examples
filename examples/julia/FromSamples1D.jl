@@ -28,7 +28,7 @@ x = reshape(sinharcsinh.(z, loc=-1, scale=1, skew=.5, tail=1), 1, num_points)
 # For plotting and computing reference density
 rv = Normal()
 t = range(-3,3,length=100)
-rho_t = pdf.(rv, t)
+reference_density_pdf = pdf.(rv, t)
 
 # Before optimization
 num_bins = 50
@@ -36,7 +36,7 @@ if make_plot
     fig = Figure()
     ax1 = Axis(fig[1,1], title="Before Optimization")
     hist!(ax1, x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Target samples")
-    scatter!(ax1, t, rho_t, label="Reference density")
+    scatter!(ax1, t, reference_density_pdf, label="Reference density")
     axislegend(ax1)
     display(fig)
 end
@@ -79,7 +79,7 @@ if make_plot
     fig = Figure()
     ax2 = Axis(fig[1,1], title="After Optimization")
     hist!(ax2, map_of_x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Normalized Samples")
-    scatter!(ax2, t, rho_t, color=:red, label="Reference Density")
+    scatter!(ax2, t, reference_density_pdf, color=:red, label="Reference Density")
     axislegend(ax2)
     display(fig)
 end
