@@ -1,6 +1,8 @@
 #!/bin/bash
 set -ex
 
+PREFIX=~/.installations
+
 # Build kokkos 
 cd ~
 mkdir .installations 
@@ -10,7 +12,7 @@ cd .work
 git clone https://github.com/kokkos/kokkos.git
 mkdir kokkos/build
 cd kokkos/build
-cmake -DCMAKE_INSTALL_PREFIX=~/.installations/Kokkos \
+cmake -DCMAKE_INSTALL_PREFIX=$PREFIX \
           -DKokkos_ENABLE_SERIAL=ON \
           -DKokkos_ENABLE_OPENMP=ON \
           -DBUILD_SHARED_LIBS=ON    \
@@ -21,10 +23,10 @@ make install
 
 # Install MParT
 cd ~/.work
-git clone -b main --single-branch https://github.com/MeasureTransport/MParT.git
+git clone -b findpython_cmake --single-branch https://github.com/MeasureTransport/MParT.git
 mkdir MParT/build
 cd MParT/build 
-cmake -DMPART_BUILD_TESTS=OFF -DKokkos_DIR=~/.installations/Kokkos/lib/cmake/Kokkos -DCMAKE_INSTALL_PREFIX=~/.installations/MParT ../
+cmake -DMPART_BUILD_TESTS=OFF -DCMAKE_INSTALL_PREFIX=$PREFIX ../
 make install 
 
 # Clean up build folders
