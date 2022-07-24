@@ -20,7 +20,6 @@ cmake -DCMAKE_INSTALL_PREFIX=$PREFIX \
 ../
 make install
 
-
 # Install MParT
 cd ~/.work
 git clone -b main --single-branch https://github.com/MeasureTransport/MParT.git
@@ -32,3 +31,9 @@ make install
 # Clean up build folders
 cd ~
 rm -rf ~/.work
+
+# Generate jupyter notebooks from python scripts
+jupyter lab build
+
+cd ~/examples/python
+jupytext --set-formats ipynb,py MonotoneLeastSquares.py
