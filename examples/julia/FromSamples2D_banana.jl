@@ -29,7 +29,8 @@ opts = MapOptions()
 tri_map = CreateTriangular(2,2,2,opts)
 coeffs = zeros(numCoeffs(tri_map))
 
-function obj(coeffs, nothing)
+function obj(coeffs, p)
+    tri_map, x = p
     SetCoeffs(tri_map, coeffs)
     map_of_x = Evaluate(tri_map, x)
     ref_density_of_map_of_x = logpdf(reference_density, map_of_x)
@@ -37,7 +38,8 @@ function obj(coeffs, nothing)
     -sum(ref_density_of_map_of_x + log_det)/num_points
 end
 
-function grad_obj(g, coeffs, nothing)
+function grad_obj(g, coeffs, p)
+    tri_map, x = p
     SetCoeffs(tri_map, coeffs)
     map_of_x = Evaluate(tri_map, x)
     grad_ref_density_of_map_of_x = -CoeffGrad(tri_map, x, map_of_x)
@@ -57,23 +59,24 @@ if make_plot
 end
 
 u0 = CoeffMap(tri_map)
+p = (tri_map, x)
 fcn = OptimizationFunction(obj, grad = grad_obj)
-prob = OptimizationProblem(fcn, u0, nothing, g_tol = 1e-16)
+prob = OptimizationProblem(fcn, u0, p, g_tol = 1e-16)
 
 ## Optimize
 
 
 println("Starting coeffs")
 println(u0)
-println("and error: $(obj(u0,nothing))")
+println("and error: $(obj(u0,p))")
 println("===================")
-@time(sol = solve(prob, BFGS()));
+sol = solve(prob, BFGS())
 ##
 u_final = sol.u
 SetCoeffs(tri_map, u_final)
 println("Final coeffs")
 println(u_final)
-println("and error: $(obj(u_final,nothing))")
+println("and error: $(obj(u_final,p))")
 println("===================")
 map_of_test_x = Evaluate(tri_map, test_x)
 if make_plot

@@ -51,27 +51,29 @@ opts = MapOptions(basisType = BasisTypes.HermiteFunctions)
 monotoneMap = CreateComponent(fixed_mset, opts)
 
 # KL divergence objective
-function objective(coeffs,_)
+function objective(coeffs,p)
+    monotoneMap, x, rv = p
     SetCoeffs(monotoneMap, coeffs)
     map_of_x = Evaluate(monotoneMap, x)
     ref_logpdf_of_map_of_x = logpdf.(rv, map_of_x)
     log_det = LogDeterminant(monotoneMap, x)
-    return -sum(ref_logpdf_of_map_of_x[:] + log_det)/num_points
+    -sum(vec(ref_logpdf_of_map_of_x) + log_det)/num_points
 end
 
 u0 = CoeffMap(monotoneMap)
-prob = OptimizationProblem(objective, u0, nothing)
+p = (monotoneMap, x, rv)
+prob = OptimizationProblem(objective, u0, p)
 
 ## Optimize
 println("Starting coeffs")
 println(u0)
-println("and error: $(objective(u0, nothing))")
+println("and error: $(objective(u0, p))")
 sol = solve(prob, NelderMead())
 u_final = sol.u
 SetCoeffs(monotoneMap, u_final)
 println("Final coeffs")
 println(u_final)
-println("and error: $(objective(u_final, nothing))")
+println("and error: $(objective(u_final, p))")
 
 ## After optimization plot
 map_of_x = Evaluate(monotoneMap, x)

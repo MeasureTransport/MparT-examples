@@ -33,7 +33,8 @@ monotoneMap = CreateComponent(fixed_mset, opts)
 ##
 
 # Least Squares objective
-function objective(coeffs,_)
+function objective(coeffs,p)
+    monotoneMap, x, y_measured = p
     SetCoeffs(monotoneMap, coeffs)
     map_of_x = Evaluate(monotoneMap, x)
     norm(map_of_x - y_measured)^2/size(x,2)
@@ -42,9 +43,10 @@ end
 # Before Optimization
 map_of_x_before = Evaluate(monotoneMap, x)
 u0 = CoeffMap(monotoneMap)
-error_before = objective(u0,nothing)
+p = (monotoneMap, x, y_measured)
+error_before = objective(u0,p)
 fcn = OptimizationFunction(objective)
-prob = OptimizationProblem(fcn, u0, nothing)
+prob = OptimizationProblem(fcn, u0, p)
 
 # Optimize
 sol = solve(prob, NelderMead())
@@ -53,7 +55,7 @@ SetCoeffs(monotoneMap, u_final)
 
 ## After Optimization
 map_of_x_after = Evaluate(monotoneMap, x)
-error_after = objective(u_final, nothing)
+error_after = objective(u_final, p)
 fig1 = fig2 = nothing
 if make_plot
     fig1 = Figure()

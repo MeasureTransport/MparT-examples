@@ -35,7 +35,8 @@ opts = MapOptions()
 monotoneMap = CreateComponent(fixed_mset, opts)
 
 # KL divergence objective
-function objective(coeffs,_)
+function objective(coeffs,p)
+    monotoneMap, x = p
     SetCoeffs(monotoneMap, coeffs)
     map_of_x = Evaluate(monotoneMap, x)
     pi_of_map_of_x = logpdf.(rv, map_of_x)
@@ -44,18 +45,19 @@ function objective(coeffs,_)
 end
 
 u0 = CoeffMap(monotoneMap)
-prob = OptimizationProblem(objective, u0, nothing)
+p = monotoneMap, x
+prob = OptimizationProblem(objective, u0, p)
 
 # Optimize
 println("Starting Coeffs")
 println(u0)
-println("And error $(objective(u0,nothing))")
+println("And error $(objective(u0,p))")
 sol = solve(prob, NelderMead())
 u_final = sol.u
 SetCoeffs(monotoneMap, u_final)
 println("Final Coeffs")
 println(u_final)
-println("And error $(objective(u_final,nothing))")
+println("And error $(objective(u_final,p))")
 
 ## After optimization Plot
 map_of_x = Evaluate(monotoneMap, x)
