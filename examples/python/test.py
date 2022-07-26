@@ -74,10 +74,10 @@ def SV_log_pdf(X):
     return logPdf
 
 
-T=40 #number of time steps
+T=20 #number of time steps
 d=T+2
 
-N = 2000 #Number of training samples
+N = 10000 #Number of training samples
 X = generate_SV_samples(d,N)
 
 # # Plot 1D some 1D marginals
@@ -151,130 +151,19 @@ Xtest = generate_SV_samples(d,Ntest)
 logPdfSV = SV_log_pdf(Xtest)
 
 opts = MapOptions()
-opts.basisType = BasisTypes.HermiteFunctions
-
-
-total_order = 1;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs=[];
-for dk in range(1,d+1):
-    if dk == 2:
-        fixed_mset= FixedMultiIndexSet(dk-1,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[dk-1,:].reshape(1,-1)
-        Xtestk = Xtest[dk-1,:].reshape(1,-1)
-    else:
-        fixed_mset= FixedMultiIndexSet(dk,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[:dk,:]
-        Xtestk = Xtest[:dk,:]
-
-    meanData = np.mean(Xtrain,1)
-    stdData = np.std(Xtrain,1)
-    Linv = np.diag(1/stdData)
-    meanInv = -np.dot(Linv,meanData)
-
-    XtrainNorm = meanInv.reshape(-1,1)+np.dot(Linv,Xtrain)
-
-    options={'gtol': 1e-3, 'disp': True}
-    print("Number of coefficients: "+str(S.numCoeffs))
-    ListCoeffs.append(S.numCoeffs)
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, XtrainNorm), jac=grad_obj, method='BFGS', options=options)
-
-    rho = multivariate_normal(np.zeros(dk),np.eye(dk))
-    
-    logPdfTM=np.vstack((logPdfTM,log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,Xtestk)))
-    xplot = np.linspace(-0.5,1.5,200).reshape(1,-1)
-logPdfTM_to1=logPdfTM[1:,:]
-KL_to1 = compute_joint_KL(logPdfTM_to1,logPdfSV)
 
 total_order = 2;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs=[];
-for dk in range(1,d+1):
-    print(dk)
-    if dk == 2:
-        fixed_mset= FixedMultiIndexSet(dk-1,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[dk-1,:].reshape(1,-1)
-        Xtestk = Xtest[dk-1,:].reshape(1,-1)
-    else:
-        fixed_mset= FixedMultiIndexSet(dk,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[:dk,:]
-        Xtestk = Xtest[:dk,:]
+noneLim = NoneLim()
+mset_to= MultiIndexSet.CreateTotalOrder(4,total_order,noneLim)
 
-    meanData = np.mean(Xtrain,1)
-    stdData = np.std(Xtrain,1)
-    Linv = np.diag(1/stdData)
-    meanInv = -np.dot(Linv,meanData)
+multis=np.zeros((mset_to.Size(),6))
+for s in range(mset_to.Size()):
+    multis_to = np.array([mset_to[s].tolist()])
+    print(multis_to)
+    multis[s,:2]=multis_to[0,:2]
+    multis[s,-2:]=multis_to[0,-2:]
 
-    XtrainNorm = meanInv.reshape(-1,1)+np.dot(Linv,Xtrain)
+print(multis)
 
-    options={'gtol': 1e-3, 'disp': True}
-    print("Number of coefficients: "+str(S.numCoeffs))
-    ListCoeffs.append(S.numCoeffs)
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, XtrainNorm), jac=grad_obj, method='BFGS', options=options)
-    rho = multivariate_normal(np.zeros(dk),np.eye(dk))    
-    logPdfTM=np.vstack((logPdfTM,log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,Xtestk)))
-logPdfTM_to2=logPdfTM[1:,:]
-KL_to2 = compute_joint_KL(logPdfTM_to2,logPdfSV)
-
-
-
-total_order = 5;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs=[];
-mset_to= MultiIndexSet.CreateTotalOrder(4,total_order,NoneLim())
-
-print("Number of coefficients: "+str(mset_to.Size()))
-
-for dk in range(1,d+1):
-    print(dk)
-    if dk <= 2:
-        fixed_mset= FixedMultiIndexSet(1,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[dk-1,:].reshape(1,-1)
-        Xtestk = Xtest[dk-1,:].reshape(1,-1)
-    elif dk==3:
-        fixed_mset= FixedMultiIndexSet(dk,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[:dk,:]
-        Xtestk = Xtest[:dk,:]
-    else:
-        multis=np.zeros((mset_to.Size(),dk))
-        for s in range(mset_to.Size()):
-            multis_to = np.array([mset_to[s].tolist()])
-            multis[s,:2]=multis_to[0,:2]
-            multis[s,-2:]=multis_to[0,-2:]
-        mset = MultiIndexSet(multis)
-        fixed_mset = mset.fix(True)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[:dk,:]
-        Xtestk = Xtest[:dk,:]
-
-    meanData = np.mean(Xtrain,1)
-    stdData = np.std(Xtrain,1)
-    Linv = np.diag(1/stdData)
-    meanInv = -np.dot(Linv,meanData)
-
-    XtrainNorm = meanInv.reshape(-1,1)+np.dot(Linv,Xtrain)
-    options={'gtol': 1e-2, 'disp': True}
-
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, XtrainNorm), jac=grad_obj, method='BFGS', options=options)
-    rho = multivariate_normal(np.zeros(dk),np.eye(dk))    
-    logPdfTM=np.vstack((logPdfTM,log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,Xtestk)))
-
-logPdfTM_sa=logPdfTM[1:,:]
-KL_sa = compute_joint_KL(logPdfTM_sa,logPdfSV)
-
-fig, ax =plt.subplots()
-ax.plot(range(1,d+1),KL_to1,label='total order 1')
-ax.plot(range(1,d+1),KL_to2,label='total order 2')
-ax.plot(range(1,d+1),KL_sa,label='SA 2')
-
-ax.set_yscale('log')
-ax.set_xlabel('d')
-ax.set_ylabel('KL')
-plt.legend()
-plt.show()
+mset =  MultiIndexSet(multis)
+print(dir(mset))
