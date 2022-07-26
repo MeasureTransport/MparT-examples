@@ -88,9 +88,3 @@ plt.hist(map_of_x.flatten(), num_bins, facecolor='blue', alpha=0.5, density=True
 plt.plot(t,rho_t,label="Target density")
 plt.legend()
 plt.show()
-
-assert math.isclose(monotoneMap.CoeffMap()[0], 2, abs_tol=1e-1)
-assert math.isclose(monotoneMap.CoeffMap()[1], -0.68, abs_tol=1e-1)
-assert math.isclose(objective(monotoneMap.CoeffMap(), monotoneMap, x, num_points), 1.41, abs_tol=1e-1)
-
-
