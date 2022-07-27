@@ -1,3 +1,5 @@
+# # Construct map from banana density 2D
+
 from mpart import *
 import numpy as np
 from scipy.optimize import minimize

@@ -1,3 +1,6 @@
+# # Construct map from banana distribution samples in 2D
+
+
 from mpart import *
 import numpy as np
 from scipy.optimize import minimize
