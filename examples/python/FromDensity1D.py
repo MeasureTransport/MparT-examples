@@ -1,3 +1,7 @@
+# # Construct map from density
+#
+# One way to construct a transport map is from an unnormalized density. 
+
 import math
 import numpy as np
 from scipy.optimize import minimize
