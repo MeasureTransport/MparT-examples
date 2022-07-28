@@ -21,10 +21,10 @@
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable before importing MParT.
 
 # +
-import math
-
-# +
-import math
+b = 1
+a = 2
+c = b + a
+print(c)
 
 # +
 import numpy as np
