@@ -22,13 +22,26 @@
 
 # +
 import math
+
+# +
+import math
+
+# +
 import numpy as np
+
+# +
 from scipy.optimize import minimize
+
+# +
 from scipy.stats import norm
+
+# +
 import matplotlib.pyplot as plt
 
+# +
 from mpart import *
 
+# +
 print('Kokkos is using', Concurrency(), 'threads')
 # -
 # The target distribution is given by $x\sim\mathcal{N}(2, 0.5)$.
