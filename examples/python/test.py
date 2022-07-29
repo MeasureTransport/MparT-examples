@@ -155,6 +155,9 @@ opts = MapOptions()
 total_order = 2;
 noneLim = NoneLim()
 mset_to= MultiIndexSet.CreateTotalOrder(4,total_order,noneLim)
+multis1 = MultiIndex([0,3,0,0,0,0])
+
+mset_to +=multis1
 
 multis=np.zeros((mset_to.Size(),6))
 for s in range(mset_to.Size()):
@@ -165,5 +168,9 @@ for s in range(mset_to.Size()):
 
 print(multis)
 
-mset =  MultiIndexSet(multis)
-print(dir(mset))
+multis = np.arange(0,6).reshape(-1,1)
+print(multis.shape)
+
+multis = np.array([[0], [1], [2], [3], [4], [5]])
+print(multis.shape)
+# mset = mset + multis1

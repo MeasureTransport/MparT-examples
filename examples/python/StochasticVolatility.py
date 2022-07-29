@@ -74,7 +74,7 @@ def SV_log_pdf(X):
     return logPdf
 
 
-T=40 #number of time steps
+T=10 #number of time steps
 d=T+2
 
 N = 2000 #Number of training samples
@@ -146,19 +146,21 @@ def compute_joint_KL(logPdfTM,logPdfSV):
         KL[k-1] = np.mean(logPdfTru - logPdfApp)
     return KL
 
-Ntest=5000
+Ntest=10000
 Xtest = generate_SV_samples(d,Ntest)
 logPdfSV = SV_log_pdf(Xtest)
 
 opts = MapOptions()
 opts.basisType = BasisTypes.HermiteFunctions
+# opts.basisType = BasisTypes.ProbabilistHermite
+# opts.basisType = BasisTypes.PhysicistHermite
 
 
 total_order = 1;
 logPdfTM = np.zeros((Ntest,))
 ListCoeffs=[];
 for dk in range(1,d+1):
-    if dk == 2:
+    if dk == -2:
         fixed_mset= FixedMultiIndexSet(dk-1,total_order)
         S = CreateComponent(fixed_mset,opts)
         Xtrain = X[dk-1,:].reshape(1,-1)
@@ -193,7 +195,7 @@ logPdfTM = np.zeros((Ntest,))
 ListCoeffs=[];
 for dk in range(1,d+1):
     print(dk)
-    if dk == 2:
+    if dk == -2:
         fixed_mset= FixedMultiIndexSet(dk-1,total_order)
         S = CreateComponent(fixed_mset,opts)
         Xtrain = X[dk-1,:].reshape(1,-1)
@@ -222,20 +224,25 @@ KL_to2 = compute_joint_KL(logPdfTM_to2,logPdfSV)
 
 
 
-total_order = 5;
+total_order = 1;
 logPdfTM = np.zeros((Ntest,))
 ListCoeffs=[];
 mset_to= MultiIndexSet.CreateTotalOrder(4,total_order,NoneLim())
 
 print("Number of coefficients: "+str(mset_to.Size()))
-
+maxOrder=6
 for dk in range(1,d+1):
     print(dk)
-    if dk <= 2:
+    if dk == 1:
         fixed_mset= FixedMultiIndexSet(1,total_order)
         S = CreateComponent(fixed_mset,opts)
         Xtrain = X[dk-1,:].reshape(1,-1)
         Xtestk = Xtest[dk-1,:].reshape(1,-1)
+    elif dk == 2:
+        fixed_mset= FixedMultiIndexSet(1,maxOrder)
+        S = CreateComponent(fixed_mset,opts)
+        Xtrain = X[dk-1,:].reshape(1,-1)
+        Xtestk = Xtest[dk-1,:].reshape(1,-1) 
     elif dk==3:
         fixed_mset= FixedMultiIndexSet(dk,total_order)
         S = CreateComponent(fixed_mset,opts)
@@ -269,9 +276,9 @@ logPdfTM_sa=logPdfTM[1:,:]
 KL_sa = compute_joint_KL(logPdfTM_sa,logPdfSV)
 
 fig, ax =plt.subplots()
-ax.plot(range(1,d+1),KL_to1,label='total order 1')
-ax.plot(range(1,d+1),KL_to2,label='total order 2')
-ax.plot(range(1,d+1),KL_sa,label='SA 2')
+ax.plot(range(1,d+1),KL_to1,'-o',label='total order 1')
+ax.plot(range(1,d+1),KL_to2,'-o',label='total order 2')
+ax.plot(range(1,d+1),KL_sa,'-o',label='custom MultiIndexSet')
 
 ax.set_yscale('log')
 ax.set_xlabel('d')
