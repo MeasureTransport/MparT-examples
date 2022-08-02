@@ -37,3 +37,4 @@ jupyter lab build
 
 cd ~/examples/python
 jupytext --set-formats ipynb,py MonotoneLeastSquares.py
+jupyter nbconvert --debug --ExecutePreprocessor.timeout=600 --to notebook --execute MonotoneLeastSquares.ipynb
