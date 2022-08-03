@@ -80,22 +80,6 @@ d=T+2
 N = 2000 #Number of training samples
 X = generate_SV_samples(d,N)
 
-# # Plot 1D some 1D marginals
-# plt.figure()
-# plt.hist(X[0,:].flatten(), 50, facecolor='blue', alpha=0.5, density=True,label=r'$\mu$')
-# plt.legend()
-# plt.show()
-
-# plt.figure()
-# plt.hist(X[1,:].flatten(), 50, facecolor='blue', alpha=0.5, density=True,label=r'$\phi$')
-# plt.legend()
-# plt.show()
-
-# plt.figure()
-# plt.hist(X[-1,:].flatten(), 50, facecolor='blue', alpha=0.5, density=True,label=r'$Z_{'+str(T)+'}$')
-# plt.legend()
-# plt.show()
-
 # Negative log likelihood objective
 def obj(coeffs, tri_map,x):
     """ Evaluates the log-likelihood of the samples using the map-induced density. """
@@ -134,12 +118,6 @@ def log_cond_pullback_pdf(triMap,rho,x):
     log_pdf = rho.logpdf(r.T)+triMap.LogDeterminant(x)
     return log_pdf
 
-def log_cond_composed_pullback_pdf(triMap,mu,L,rho,yx):
-    Lyx = mu.reshape(-1,1)+np.dot(L,yx)
-    eval = triMap.Evaluate(Lyx)
-    log_pdf = rho.logpdf(eval.T)+triMap.LogDeterminant(Lyx)+np.log(np.linalg.det(L))
-    return log_pdf
-
 def compute_joint_KL(logPdfSV,logPdfTM):
     KL = np.zeros((logPdfSV.shape[0],))
     for k in range(1,d+1):
@@ -152,9 +130,6 @@ logPdfSV = SV_log_pdf(Xtest)
 
 opts = MapOptions()
 opts.basisType = BasisTypes.HermiteFunctions
-# opts.basisType = BasisTypes.ProbabilistHermite
-# opts.basisType = BasisTypes.PhysicistHermite
-
 
 total_order = 1;
 logPdfTM = np.zeros((Ntest,))
@@ -171,21 +146,12 @@ for dk in range(1,d+1):
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
 
-    meanData = np.mean(Xtrain,1)
-    stdData = np.std(Xtrain,1)
-    Linv = np.diag(1/stdData)
-    meanInv = -np.dot(Linv,meanData)
-    Linv = np.eye(Xtrain.shape[0])
-    meanInv = np.zeros(Xtrain.shape[0])
-
-    XtrainNorm = meanInv.reshape(-1,1)+np.dot(Linv,Xtrain)
-
     options={'gtol': 1e-3, 'disp': True}
     print("Number of coefficients: "+str(S.numCoeffs))
     ListCoeffs.append(S.numCoeffs)
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, XtrainNorm), jac=grad_obj, method='BFGS', options=options)
+    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
-    logPdfTM=np.vstack((logPdfTM,log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,Xtestk)))
+    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
     xplot = np.linspace(-0.5,1.5,200).reshape(1,-1)
 logPdfTM_to1=logPdfTM[1:,:]
 KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
@@ -206,26 +172,17 @@ for dk in range(1,d+1):
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
 
-    meanData = np.mean(Xtrain,1)
-    stdData = np.std(Xtrain,1)
-    Linv = np.diag(1/stdData)
-    meanInv = -np.dot(Linv,meanData)
-    Linv = np.eye(Xtrain.shape[0])
-    meanInv = np.zeros(Xtrain.shape[0])
-
-    XtrainNorm = meanInv.reshape(-1,1)+np.dot(Linv,Xtrain)
-
     options={'gtol': 1e-3, 'disp': True}
     print("Number of coefficients: "+str(S.numCoeffs))
     ListCoeffs.append(S.numCoeffs)
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, XtrainNorm), jac=grad_obj, method='BFGS', options=options)
+    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
-    logPdfTM=np.vstack((logPdfTM,log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,Xtestk)))
+    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
 logPdfTM_to2=logPdfTM[1:,:]
 KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 
 
-total_order = 1;
+total_order = 2;
 logPdfTM = np.zeros((Ntest,))
 ListCoeffs=[];
 mset_to= MultiIndexSet.CreateTotalOrder(4,total_order,NoneLim())
@@ -261,19 +218,11 @@ for dk in range(1,d+1):
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
 
-    meanData = np.mean(Xtrain,1)
-    stdData = np.std(Xtrain,1)
-    Linv = np.diag(1/stdData)
-    meanInv = -np.dot(Linv,meanData)
-    Linv = np.eye(Xtrain.shape[0])
-    meanInv = np.zeros(Xtrain.shape[0])
-
-    XtrainNorm = meanInv.reshape(-1,1)+np.dot(Linv,Xtrain)
     options={'gtol': 1e-2, 'disp': True}
 
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, XtrainNorm), jac=grad_obj, method='BFGS', options=options)
+    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
-    logPdfTM=np.vstack((logPdfTM,log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,Xtestk)))
+    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
 
 logPdfTM_sa=logPdfTM[1:,:]
 KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
@@ -288,5 +237,3 @@ ax.set_xlabel('d')
 ax.set_ylabel('KL')
 plt.legend()
 plt.show()
-
-print(KL_to1)
