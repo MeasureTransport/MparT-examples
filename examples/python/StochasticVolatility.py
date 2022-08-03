@@ -70,9 +70,7 @@ def SV_log_pdf(X):
             stdZi = sigma
             logPdfZi = np.log(normpdf(Z[i,:],meanZi,stdZi))
             logPdf = np.vstack((logPdf,logPdfZi))
-
     return logPdf
-
 
 T=40 #number of time steps
 d=T+2
@@ -124,6 +122,7 @@ def compute_joint_KL(logPdfSV,logPdfTM):
         KL[k-1]=np.mean(np.sum(logPdfSV[:k,:],0)-np.sum(logPdfTM[:k,:],0))
     return KL
 
+# Generate testing samples and true log-pdf
 Ntest=2000
 Xtest = generate_SV_samples(d,Ntest)
 logPdfSV = SV_log_pdf(Xtest)
@@ -131,68 +130,61 @@ logPdfSV = SV_log_pdf(Xtest)
 opts = MapOptions()
 opts.basisType = BasisTypes.HermiteFunctions
 
-total_order = 1;
+
+# Total order 1 approximation
+totalOrder = 1;
 logPdfTM = np.zeros((Ntest,))
-ListCoeffs=[];
 for dk in range(1,d+1):
-    if dk == -2:
-        fixed_mset= FixedMultiIndexSet(dk-1,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[dk-1,:].reshape(1,-1)
-        Xtestk = Xtest[dk-1,:].reshape(1,-1)
-    else:
-        fixed_mset= FixedMultiIndexSet(dk,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[:dk,:]
-        Xtestk = Xtest[:dk,:]
+    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
+    S = CreateComponent(fixed_mset,opts)
+    Xtrain = X[:dk,:]
+    Xtestk = Xtest[:dk,:]
 
     options={'gtol': 1e-3, 'disp': True}
     print("Number of coefficients: "+str(S.numCoeffs))
-    ListCoeffs.append(S.numCoeffs)
     res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
     xplot = np.linspace(-0.5,1.5,200).reshape(1,-1)
 logPdfTM_to1=logPdfTM[1:,:]
+
+# Compute joint KL divergence
 KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
 
-total_order = 2;
+# Total order 2 approximation
+totalOrder = 2;
 logPdfTM = np.zeros((Ntest,))
-ListCoeffs=[];
 for dk in range(1,d+1):
     print(dk)
-    if dk == -2:
-        fixed_mset= FixedMultiIndexSet(dk-1,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[dk-1,:].reshape(1,-1)
-        Xtestk = Xtest[dk-1,:].reshape(1,-1)
-    else:
-        fixed_mset= FixedMultiIndexSet(dk,total_order)
-        S = CreateComponent(fixed_mset,opts)
-        Xtrain = X[:dk,:]
-        Xtestk = Xtest[:dk,:]
+    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
+    S = CreateComponent(fixed_mset,opts)
+    Xtrain = X[:dk,:]
+    Xtestk = Xtest[:dk,:]
 
     options={'gtol': 1e-3, 'disp': True}
     print("Number of coefficients: "+str(S.numCoeffs))
-    ListCoeffs.append(S.numCoeffs)
     res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
 logPdfTM_to2=logPdfTM[1:,:]
+
+# Compute joint KL divergence
 KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 
+# Problem specifc MultiIndexSet:
+#   - First and last 2 variables of each component (for component 1 and 3 that's for all variables) are represented by a total order 2 MultiIndexSet
+#   - Second component is computed with high order polynomial w.r.t second variable
 
-total_order = 2;
+totalOrder = 2;
 logPdfTM = np.zeros((Ntest,))
 ListCoeffs=[];
-mset_to= MultiIndexSet.CreateTotalOrder(4,total_order,NoneLim())
+mset_to= MultiIndexSet.CreateTotalOrder(4,totalOrder,NoneLim())
 
-print("Number of coefficients: "+str(mset_to.Size()))
 maxOrder=9
 for dk in range(1,d+1):
     print(dk)
     if dk == 1:
-        fixed_mset= FixedMultiIndexSet(1,total_order)
+        fixed_mset= FixedMultiIndexSet(1,totalOrder)
         S = CreateComponent(fixed_mset,opts)
         Xtrain = X[dk-1,:].reshape(1,-1)
         Xtestk = Xtest[dk-1,:].reshape(1,-1)
@@ -202,7 +194,7 @@ for dk in range(1,d+1):
         Xtrain = X[dk-1,:].reshape(1,-1)
         Xtestk = Xtest[dk-1,:].reshape(1,-1) 
     elif dk==3:
-        fixed_mset= FixedMultiIndexSet(dk,total_order)
+        fixed_mset= FixedMultiIndexSet(dk,totalOrder)
         S = CreateComponent(fixed_mset,opts)
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
@@ -219,14 +211,19 @@ for dk in range(1,d+1):
         Xtestk = Xtest[:dk,:]
 
     options={'gtol': 1e-2, 'disp': True}
-
+    print("Number of coefficients: "+str(S.numCoeffs))
     res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
-
 logPdfTM_sa=logPdfTM[1:,:]
+
+# Compute joint KL divergence
 KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
 
+# Compare map approximations 
+# Increasing the total order of the approximation should improve the quality of approximation. 
+# However, at a certain number of dimension the number of coefficients to optimize is too large compare to the number of samples.
+# That's why using a custom MultiIndexSet that exploits sparsity of the problem helps solving this problem
 fig, ax =plt.subplots()
 ax.plot(range(1,d+1),KL_to1,'-o',label='total order 1')
 ax.plot(range(1,d+1),KL_to2,'-o',label='total order 2')
