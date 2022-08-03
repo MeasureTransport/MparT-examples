@@ -19,7 +19,7 @@ def generate_SV_samples(d,N):
     sigma = 0.25
     mu = np.random.randn(1,N)
     phis = 3+np.random.randn(1,N)
-    phi = 2*np.exp(phis)/(1+np.exp(phis))-1 #Doesn't seem to follow paper
+    phi = 2*np.exp(phis)/(1+np.exp(phis))-1
     X = np.vstack((mu,phi))
     if d > 2:
         # Sample Z0
@@ -74,27 +74,11 @@ def SV_log_pdf(X):
     return logPdf
 
 
-T=20 #number of time steps
+T=10 #number of time steps
 d=T+2
 
-N = 10000 #Number of training samples
+N = 2000 #Number of training samples
 X = generate_SV_samples(d,N)
-
-# # Plot 1D some 1D marginals
-# plt.figure()
-# plt.hist(X[0,:].flatten(), 50, facecolor='blue', alpha=0.5, density=True,label=r'$\mu$')
-# plt.legend()
-# plt.show()
-
-# plt.figure()
-# plt.hist(X[1,:].flatten(), 50, facecolor='blue', alpha=0.5, density=True,label=r'$\phi$')
-# plt.legend()
-# plt.show()
-
-# plt.figure()
-# plt.hist(X[-1,:].flatten(), 50, facecolor='blue', alpha=0.5, density=True,label=r'$Z_{'+str(T)+'}$')
-# plt.legend()
-# plt.show()
 
 # Negative log likelihood objective
 def obj(coeffs, tri_map,x):
@@ -135,42 +119,55 @@ def log_cond_pullback_pdf(triMap,rho,x):
 def log_cond_composed_pullback_pdf(triMap,mu,L,rho,yx):
     Lyx = mu.reshape(-1,1)+np.dot(L,yx)
     eval = triMap.Evaluate(Lyx)
-    log_pdf = rho.logpdf(eval.T)+triMap.LogDeterminant(yx)+np.log(np.linalg.det(Linv))
+    log_pdf = rho.logpdf(eval.T)+triMap.LogDeterminant(Lyx)+np.log(np.linalg.det(L))
     return log_pdf
 
-def compute_joint_KL(logPdfTM,logPdfSV):
-    KL = np.zeros((logPdfSV.shape[0],))
-    for k in range(1,d+1):
-        logPdfApp = np.sum(logPdfTM[:k,:],axis=0)
-        logPdfTru = np.sum(logPdfSV[:k,:],axis=0)
-        KL[k-1] = np.mean(logPdfTru - logPdfApp)
-    return KL
-
-Ntest=5000
+Ntest=10000
 Xtest = generate_SV_samples(d,Ntest)
 logPdfSV = SV_log_pdf(Xtest)
 
 opts = MapOptions()
+opts.basisType = BasisTypes.HermiteFunctions
+# opts.basisType = BasisTypes.ProbabilistHermite
+# opts.basisType = BasisTypes.PhysicistHermite
 
-total_order = 2;
-noneLim = NoneLim()
-mset_to= MultiIndexSet.CreateTotalOrder(4,total_order,noneLim)
-multis1 = MultiIndex([0,3,0,0,0,0])
 
-mset_to +=multis1
+total_order = 9;
+logPdfTM = np.zeros((Ntest,))
+ListCoeffs=[];
+dk = 2
+fixed_mset= FixedMultiIndexSet(dk-1,total_order)
+S = CreateComponent(fixed_mset,opts)
+Xtrain = X[dk-1,:].reshape(1,-1)
+Xtestk = Xtest[dk-1,:].reshape(1,-1)
 
-multis=np.zeros((mset_to.Size(),6))
-for s in range(mset_to.Size()):
-    multis_to = np.array([mset_to[s].tolist()])
-    print(multis_to)
-    multis[s,:2]=multis_to[0,:2]
-    multis[s,-2:]=multis_to[0,-2:]
+meanData = np.mean(Xtrain,1)
+stdData = np.std(Xtrain,1)
+Linv = np.diag(1/stdData)
+meanInv = -np.dot(Linv,meanData)
 
-print(multis)
 
-multis = np.arange(0,6).reshape(-1,1)
-print(multis.shape)
+XtrainNorm = meanInv.reshape(-1,1)+np.dot(Linv,Xtrain)
 
-multis = np.array([[0], [1], [2], [3], [4], [5]])
-print(multis.shape)
-# mset = mset + multis1
+options={'gtol': 1e-3, 'disp': True}
+print("Number of coefficients: "+str(S.numCoeffs))
+ListCoeffs.append(S.numCoeffs)
+res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, XtrainNorm), jac=grad_obj, method='BFGS', options=options)
+
+rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
+
+logPdfTM=np.vstack((logPdfTM,log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,Xtestk)))
+xplot = np.linspace(-0.5,1.5,200).reshape(1,-1)
+logPdfTM_to1=logPdfTM[1:,:]
+print(logPdfTM_to1)
+KL_to1 = np.mean(logPdfSV[1,:]-logPdfSV)
+print('KL divergence:',KL_to1)
+
+xplot = np.linspace(0,1,500).reshape(1,-1)
+
+plt.figure()
+plt.hist(Xtrain.flatten(), 50, facecolor='blue', alpha=0.5, density=True,label=r'$\phi$')
+plt.plot(xplot.flatten(),np.exp(log_cond_composed_pullback_pdf(S,meanInv,Linv,rho,xplot)))
+plt.legend()
+plt.show()
+
