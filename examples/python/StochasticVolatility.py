@@ -134,14 +134,17 @@ opts.basisType = BasisTypes.HermiteFunctions
 # Total order 1 approximation
 totalOrder = 1;
 logPdfTM = np.zeros((Ntest,))
+ListCoeffs_to1=[];
 for dk in range(1,d+1):
     fixed_mset= FixedMultiIndexSet(dk,totalOrder)
     S = CreateComponent(fixed_mset,opts)
     Xtrain = X[:dk,:]
     Xtestk = Xtest[:dk,:]
 
-    options={'gtol': 1e-3, 'disp': True}
     print("Number of coefficients: "+str(S.numCoeffs))
+    ListCoeffs_to1.append(S.numCoeffs)
+
+    options={'gtol': 1e-3, 'disp': True}
     res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
@@ -154,15 +157,18 @@ KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
 # Total order 2 approximation
 totalOrder = 2;
 logPdfTM = np.zeros((Ntest,))
+ListCoeffs_to2=[];
 for dk in range(1,d+1):
     print(dk)
     fixed_mset= FixedMultiIndexSet(dk,totalOrder)
     S = CreateComponent(fixed_mset,opts)
     Xtrain = X[:dk,:]
     Xtestk = Xtest[:dk,:]
+    
+    print("Number of coefficients: "+str(S.numCoeffs))
+    ListCoeffs_to2.append(S.numCoeffs)
 
     options={'gtol': 1e-3, 'disp': True}
-    print("Number of coefficients: "+str(S.numCoeffs))
     res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
@@ -177,7 +183,7 @@ KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 
 totalOrder = 2;
 logPdfTM = np.zeros((Ntest,))
-ListCoeffs=[];
+ListCoeffs_sa=[];
 mset_to= MultiIndexSet.CreateTotalOrder(4,totalOrder,NoneLim())
 
 maxOrder=9
@@ -210,8 +216,10 @@ for dk in range(1,d+1):
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
 
-    options={'gtol': 1e-2, 'disp': True}
     print("Number of coefficients: "+str(S.numCoeffs))
+    ListCoeffs_sa.append(S.numCoeffs)
+
+    options={'gtol': 1e-3, 'disp': True}
     res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
@@ -221,16 +229,24 @@ logPdfTM_sa=logPdfTM[1:,:]
 KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
 
 # Compare map approximations 
+fig, ax =plt.subplots()
+ax.plot(range(1,d+1),KL_to1,'-o',label='Total order 1')
+ax.plot(range(1,d+1),KL_to2,'-o',label='Total order 2')
+ax.plot(range(1,d+1),KL_sa,'-o',label='Custom MultiIndexSet')
+ax.set_yscale('log')
+ax.set_xlabel('d')
+ax.set_ylabel('KL')
+plt.legend()
+plt.show()
+
 # Increasing the total order of the approximation should improve the quality of approximation. 
 # However, at a certain number of dimension the number of coefficients to optimize is too large compare to the number of samples.
 # That's why using a custom MultiIndexSet that exploits sparsity of the problem helps solving this problem
 fig, ax =plt.subplots()
-ax.plot(range(1,d+1),KL_to1,'-o',label='total order 1')
-ax.plot(range(1,d+1),KL_to2,'-o',label='total order 2')
-ax.plot(range(1,d+1),KL_sa,'-o',label='custom MultiIndexSet')
-
-ax.set_yscale('log')
+ax.plot(range(1,d+1),ListCoeffs_to1,'-o',label='Total order 1')
+ax.plot(range(1,d+1),ListCoeffs_to2,'-o',label='Total order 2')
+ax.plot(range(1,d+1),ListCoeffs_sa,'-o',label='Custom MultiIndexSet')
 ax.set_xlabel('d')
-ax.set_ylabel('KL')
+ax.set_ylabel('# coefficients')
 plt.legend()
 plt.show()
