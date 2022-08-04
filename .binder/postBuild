@@ -41,3 +41,6 @@ export PYTHONPATH=$PYTHONPATH:$PREFIX/python
 
 jupytext --set-formats ipynb,py MonotoneLeastSquares.py
 jupyter nbconvert --debug --ExecutePreprocessor.timeout=600 --to notebook --execute MonotoneLeastSquares.ipynb
+
+jupytext --set-formats ipynb,py StochasticVolatility.py
+jupyter nbconvert --debug --ExecutePreprocessor.timeout=600 --to notebook --execute StochasticVolatility.ipynb
