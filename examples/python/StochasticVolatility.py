@@ -40,7 +40,7 @@ print('Kokkos is using', Concurrency(), 'threads')
 
 # -
 
-T = 40 #number of time steps
+T = 10 #number of time steps
 d = T+2
 
 opts = MapOptions()
@@ -115,10 +115,16 @@ X = generate_SV_samples(d, N)
 Ntest = 2000 # Number of testing samples
 Xtest = generate_SV_samples(d,Ntest)
 logPdfSV = SV_log_pdf(Xtest) # true log-pdf
+# -
+
+# That's how a few realizations of the process look like
+
+plt.plot(X[:,0:10]);
+plt.xlabel("Days (d)");
 
 
 # +
-# Negative log likelihood objective
+### Negative log likelihood objective
 def obj(coeffs, tri_map,x):
     """ Evaluates the log-likelihood of the samples using the map-induced density. """
     num_points = x.shape[1]
@@ -163,9 +169,55 @@ def compute_joint_KL(logPdfSV,logPdfTM):
     return KL
 
 
+# +
+# Total order 1 approximation
+totalOrder = 1;
+logPdfTM = np.zeros((Ntest,))
+ListCoeffs_to1=[];
+for dk in range(1,d+1):
+    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
+    S = CreateComponent(fixed_mset,opts)
+    Xtrain = X[:dk,:]
+    Xtestk = Xtest[:dk,:]
 
+    print("Number of coefficients: "+str(S.numCoeffs))
+    ListCoeffs_to1.append(S.numCoeffs)
 
+    options={'gtol': 1e-3, 'disp': True}
+    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
+    rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
+    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
+    xplot = np.linspace(-0.5,1.5,200).reshape(1,-1)
+logPdfTM_to1=logPdfTM[1:,:]
 
+# Compute joint KL divergence
+KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
+
+# +
+# Total order 2 approximation
+totalOrder = 2;
+logPdfTM = np.zeros((Ntest,))
+ListCoeffs_to2=[];
+for dk in range(1,d+1):
+    print(dk)
+    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
+    S = CreateComponent(fixed_mset,opts)
+    Xtrain = X[:dk,:]
+    Xtestk = Xtest[:dk,:]
+    
+    print("Number of coefficients: "+str(S.numCoeffs))
+    ListCoeffs_to2.append(S.numCoeffs)
+
+    options={'gtol': 1e-3, 'disp': True}
+    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
+    rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
+    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
+logPdfTM_to2=logPdfTM[1:,:]
+
+# Compute joint KL divergence
+KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
+
+# +
 # Problem specifc MultiIndexSet:
 #   - First and last 2 variables of each component (for component 1 and 3 that's for all variables) are represented by a total order 2 MultiIndexSet
 #   - Second component is computed with high order polynomial w.r.t second variable
@@ -216,56 +268,6 @@ logPdfTM_sa=logPdfTM[1:,:]
 
 # Compute joint KL divergence
 KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
-
-
-
-# +
-# Total order 1 approximation
-totalOrder = 1;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs_to1=[];
-for dk in range(1,d+1):
-    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
-    S = CreateComponent(fixed_mset,opts)
-    Xtrain = X[:dk,:]
-    Xtestk = Xtest[:dk,:]
-
-    print("Number of coefficients: "+str(S.numCoeffs))
-    ListCoeffs_to1.append(S.numCoeffs)
-
-    options={'gtol': 1e-3, 'disp': True}
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
-    rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
-    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
-    xplot = np.linspace(-0.5,1.5,200).reshape(1,-1)
-logPdfTM_to1=logPdfTM[1:,:]
-
-# Compute joint KL divergence
-KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
-
-# +
-# Total order 2 approximation
-totalOrder = 2;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs_to2=[];
-for dk in range(1,d+1):
-    print(dk)
-    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
-    S = CreateComponent(fixed_mset,opts)
-    Xtrain = X[:dk,:]
-    Xtestk = Xtest[:dk,:]
-    
-    print("Number of coefficients: "+str(S.numCoeffs))
-    ListCoeffs_to2.append(S.numCoeffs)
-
-    options={'gtol': 1e-3, 'disp': True}
-    res = scipy.optimize.minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
-    rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
-    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
-logPdfTM_to2=logPdfTM[1:,:]
-
-# Compute joint KL divergence
-KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 
 # +
 # Compare map approximations 
