@@ -41,6 +41,9 @@ print('Kokkos is using', Concurrency(), 'threads')
 
 # -
 
+# Let's generate some training and test samples and calculate the true log-pdf.
+
+# +
 def generate_SV_samples(d,N):
     # Sample hyper-parameters
     sigma = 0.25
@@ -60,10 +63,11 @@ def generate_SV_samples(d,N):
         X = np.vstack((X,Z))
     return X
 
-def normpdf(x,mu,sigma):
-    return  np.exp(-0.5 * ((x - mu)/sigma)**2) / (np.sqrt(2*np.pi) * sigma);
-
 def SV_log_pdf(X):
+    
+    def normpdf(x,mu,sigma):
+        return  np.exp(-0.5 * ((x - mu)/sigma)**2) / (np.sqrt(2*np.pi) * sigma);
+    
     sigma = 0.25
 
     # Extract variables mu, phi and states
@@ -99,11 +103,17 @@ def SV_log_pdf(X):
             logPdf = np.vstack((logPdf,logPdfZi))
     return logPdf
 
+N = 2000 #Number of training samples
+X = generate_SV_samples(d, N)
+
+Ntest = 2000 # Number of testing samples
+Xtest = generate_SV_samples(d,Ntest)
+logPdfSV = SV_log_pdf(Xtest) # true log-pdf
+# -
+
 T = 40 #number of time steps
 d = T+2
 
-N = 2000 #Number of training samples
-X = generate_SV_samples(d,N)
 
 # Negative log likelihood objective
 def obj(coeffs, tri_map,x):
@@ -149,10 +159,7 @@ def compute_joint_KL(logPdfSV,logPdfTM):
         KL[k-1]=np.mean(np.sum(logPdfSV[:k,:],0)-np.sum(logPdfTM[:k,:],0))
     return KL
 
-# Generate testing samples and true log-pdf
-Ntest = 2000
-Xtest = generate_SV_samples(d,Ntest)
-logPdfSV = SV_log_pdf(Xtest)
+
 
 opts = MapOptions()
 opts.basisType = BasisTypes.HermiteFunctions
@@ -256,7 +263,7 @@ logPdfTM_sa=logPdfTM[1:,:]
 KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
 
 # Compare map approximations 
-fig, ax =plt.subplots()
+fig, ax = plt.subplots()
 ax.plot(range(1,d+1),KL_to1,'-o',label='Total order 1')
 ax.plot(range(1,d+1),KL_to2,'-o',label='Total order 2')
 ax.plot(range(1,d+1),KL_sa,'-o',label='Custom MultiIndexSet')
