@@ -1,18 +1,45 @@
-import numpy as np
-from pandas import MultiIndex
-import scipy 
-import matplotlib.pyplot as plt
-import scipy.stats
-from scipy.stats import multivariate_normal
+# ---
+# jupyter:
+#   jupytext:
+#     cell_metadata_filter: -all
+#     formats: ipynb,py
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.14.0
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
+# ---
+
+# ### Stochastic volatility 
+
+# At first we import a few common packages
+
+# +
 import time
 import os
 
+import numpy as np
+import scipy
+import scipy.stats
+from scipy.stats import multivariate_normal
+from pandas import MultiIndex
+import matplotlib.pyplot as plt
+# -
+
+# Now we set the number of threads to be used by `Kokkos` and import `MParT`.
+
+# +
 os.environ['KOKKOS_NUM_THREADS'] = '8'
 from mpart import *
 
 print('Kokkos is using', Concurrency(), 'threads')
 
-rho1 = multivariate_normal(np.zeros(1),np.eye(1))
+
+# -
 
 def generate_SV_samples(d,N):
     # Sample hyper-parameters
@@ -72,8 +99,8 @@ def SV_log_pdf(X):
             logPdf = np.vstack((logPdf,logPdfZi))
     return logPdf
 
-T=40 #number of time steps
-d=T+2
+T = 40 #number of time steps
+d = T+2
 
 N = 2000 #Number of training samples
 X = generate_SV_samples(d,N)
@@ -93,7 +120,7 @@ def obj(coeffs, tri_map,x):
 
     # Return the negative log-likelihood of the entire dataset
     return -np.sum(rho_of_map_of_x + log_det)/num_points
-    
+
 def grad_obj(coeffs, tri_map, x):
     """ Returns the gradient of the log-likelihood objective wrt the map parameters. """
     num_points = x.shape[1]
@@ -123,7 +150,7 @@ def compute_joint_KL(logPdfSV,logPdfTM):
     return KL
 
 # Generate testing samples and true log-pdf
-Ntest=2000
+Ntest = 2000
 Xtest = generate_SV_samples(d,Ntest)
 logPdfSV = SV_log_pdf(Xtest)
 
