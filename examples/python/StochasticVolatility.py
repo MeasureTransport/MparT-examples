@@ -38,6 +38,10 @@ from mpart import *
 
 print('Kokkos is using', Concurrency(), 'threads')
 
+# -
+
+T = 40 #number of time steps
+d = T+2
 
 # -
 
@@ -109,11 +113,6 @@ X = generate_SV_samples(d, N)
 Ntest = 2000 # Number of testing samples
 Xtest = generate_SV_samples(d,Ntest)
 logPdfSV = SV_log_pdf(Xtest) # true log-pdf
-# -
-
-T = 40 #number of time steps
-d = T+2
-
 
 # Negative log likelihood objective
 def obj(coeffs, tri_map,x):
