@@ -40,7 +40,7 @@ print('Kokkos is using', Concurrency(), 'threads')
 
 # -
 
-T = 10 #number of time steps
+T = 40 #number of time steps
 d = T+2
 
 opts = MapOptions()
