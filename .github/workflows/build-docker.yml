@@ -25,4 +25,4 @@ jobs:
         with:
           file: .docker/Dockerfile
           push: true
-          tags: mpart_examples:latest
+          tags: quay.io/hbonart/mpart_examples:latest
