@@ -1,0 +1,13 @@
+name: mpart_examples
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - jupyterlab
+  - jupytext
+  - nbconvert
+  - nodejs
+  - numpy
+  - scipy
+  - pandas
+  - matplotlib
