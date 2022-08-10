@@ -30,17 +30,13 @@ from pandas import MultiIndex
 import matplotlib.pyplot as plt
 # -
 
-# Now we set the number of threads to be used by `Kokkos` and import `MParT`.
-
-# +
-os.environ['KOKKOS_NUM_THREADS'] = '8'
 from mpart import *
 
 print('Kokkos is using', Concurrency(), 'threads')
 
 # -
 
-T = 10 #number of time steps
+T = 40 #number of time steps
 d = T+2
 
 opts = MapOptions()
