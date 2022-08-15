@@ -1,3 +1,6 @@
+# # Construct map from samples
+
+
 import numpy as np
 from scipy.optimize import minimize
 from scipy.stats import norm

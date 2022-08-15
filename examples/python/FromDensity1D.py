@@ -21,6 +21,12 @@
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable before importing MParT.
 
 # +
+
+# # Construct map from density
+#
+# One way to construct a transport map is from an unnormalized density. 
+
+>>>>>>> origin/main
 import math
 import numpy as np
 from scipy.optimize import minimize
