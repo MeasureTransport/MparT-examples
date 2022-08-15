@@ -33,11 +33,10 @@ cd ~
 rm -rf ~/.work
 
 # Generate jupyter notebooks from python scripts
+export PYTHONPATH=$PYTHONPATH:$PREFIX/python
 jupyter lab build
 
 cd ~/examples/python
-
-export PYTHONPATH=$PYTHONPATH:$PREFIX/python
 
 jupytext --set-formats ipynb,py MonotoneLeastSquares.py
 #jupyter nbconvert --ExecutePreprocessor.timeout=600 --to notebook --execute MonotoneLeastSquares.ipynb
