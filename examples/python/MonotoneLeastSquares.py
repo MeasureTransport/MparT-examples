@@ -1,91 +1,181 @@
-# # Monotone least squares
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.14.0
+#   kernelspec:
+#     display_name: Python 3
+#     name: python3
+# ---
 
-from mpart import *
+# + [markdown] id="C2Nh9W00oG1R"
+# # Monotone Least Squares 
+#
+# One direct use of the monotonicity property given by the transport map approximation to model monotone functions from noisy data. This is called isotonic regression and can be solved in our setting by minimizing the least squares objective function
+#
+# $$
+# J(\mathbf{w})= \frac{1}{2} \sum_{i=1}^N \left(S(x^i;\mathbf{w}) - y^i \right)^2,
+# $$
+#
+# where $S$ is a monotone 1D map with parameters (polynomial coefficients) $\mathbf{w}$ and $y^i$ are noisy observations.   To solve for the map parameters that minimize this objective we will use a gradient-based optimizer.  We therefore need the gradient of the objective with respect to the map paramters.  This is given by
+#
+# $$
+# \nabla_\mathbf{w} J(\mathbf{w})= \sum_{i=1}^N \left(S(x^i;\mathbf{w}) - y^i \right)^T\left[\nabla_\mathbf{w}S(x^i;\mathbf{w})\right]
+# $$
+#
+# The implementation of `S(x)` we're using from MParT, provides tools for both evaluating the map to compute  $S(x^i;\mathbf{w})$ but also evaluating computing the action of  $\left[\nabla_\mathbf{w}S(x^i;\mathbf{w})\right]^T$ on a vector, which is useful for computing the gradient.   Below, these features are leveraged when defining an objective function that we then minimize with the BFGS optimizer implemented in `scipy.minimize`.
+
+# + [markdown] id="PtPxsHllIM9z"
+# ## Imports
+# First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
+
+# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 148, "status": "ok", "timestamp": 1660499768766, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="HlTF_CnnH1tn" outputId="cd815b6c-37d6-4f2b-9243-8045003fb0d1"
 import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
+import os
+os.environ['KOKKOS_NUM_THREADS'] = '8'
 
+import mpart as mt
+print('Kokkos is using', mt.Concurrency(), 'threads')
+plt.rcParams['figure.dpi'] = 110
 
-# geometry
+# + [markdown] id="2YgtK-z9Kngp"
+# ## Generate training data
+#
+# ### True model
+#
+# Here we choose to use the step function $H(x)=\text{sgn}(x-2)+1$ as the reference monotone function. It is worth noting that this function is not strictly monotone and piecewise continuous.
+
+# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 1526, "status": "ok", "timestamp": 1660499789684, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="gfOV6pIiL4vv" outputId="2803c9a5-d5a1-488d-d7e8-7f5ca74c8216"
+# variation interval
 num_points = 1000
 xmin, xmax = 0, 4
 x = np.linspace(xmin, xmax, num_points)[None,:]
 
-
-# Take measurements of step function, note: data might 
-# not monotone because of the noise, but we assume the 
-# true underlying function is monotone.
-noisesd = 0.4
 y_true = 2*(x>2)
+
+plt.figure()
+plt.title('Reference data')
+plt.plot(x.flatten(),y_true.flatten())
+plt.xlabel('x')
+plt.ylabel('H(x)')
+plt.show()
+
+# + [markdown] id="b53nbHArPcO9"
+# ### Training data
+#
+# Training data $y^i$ in the objective defined above are simulated by pertubating the reference data with a white Gaussian noise with a $0.4$ standard deviation.
+
+# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 1989, "status": "ok", "timestamp": 1660501250198, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="CNBHEwU1P_FN" outputId="71975fb5-b740-4d21-e246-6041bfca8e8b"
+noisesd = 0.4
+
 y_noise = noisesd*np.random.randn(num_points) 
 y_measured = y_true + y_noise
 
+plt.figure()
+plt.title('Training data')
+plt.plot(x.flatten(),y_measured.flatten(),color='orange',marker='*',linestyle='--',label='measured data', alpha=0.4)
+plt.xlabel('x')
+plt.ylabel('y')
+plt.show()
 
-# Create multi-index set:
-multis = np.array([[0], [1], [2], [3], [4], [5]])
-mset = MultiIndexSet(multis)
+# + [markdown] id="twv58XPES-jv"
+# ## Map initialization
+#
+# We use the previously generated data to train the 1D transport map. In 1D, the map complexity can be set via the list of multi-indices. Here, map complexity can be tuned by setting the `max_order` variable.
+#
+#
+
+# + [markdown] id="OCbUoL58e9qP"
+# ### Multi-index set
+
+# + executionInfo={"elapsed": 172, "status": "ok", "timestamp": 1660500006080, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="gSqwNYlacDrV"
+# Define multi-index set
+max_order = 5
+multis = np.linspace(0,max_order,6).reshape(-1,1).astype(int)
+mset = mt.MultiIndexSet(multis)
 fixed_mset = mset.fix(True)
 
+# Set options and create map object
+opts = mt.MapOptions()
+opts.quadMinSub = 4;
 
-# Set options and make regression function
-opts = MapOptions()
-monotone_map = CreateComponent(fixed_mset, opts)
+monotone_map = mt.CreateComponent(fixed_mset, opts)
+
+# + [markdown] id="5SEyUE3mh8Ne"
+# ### Plot initial approximation
+
+# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 2756, "status": "ok", "timestamp": 1660501191658, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="gVV_IdCRh73C" outputId="1cf7b7cf-f0c5-4beb-d2cb-4eccdba3945b"
+# Before optimization
+map_of_x_before = monotone_map.Evaluate(x)
+error_before = np.sum((map_of_x_before - y_measured)**2)/x.shape[1]
+
+# Plot data (before and after apart)
+plt.figure()
+plt.title('Starting map error: {:.2E}'.format(error_before))
+plt.plot(x.flatten(),y_true.flatten(),'*--',label='true data', alpha=0.8)
+plt.plot(x.flatten(),y_measured.flatten(),'*--',label='measured data',color='orange', alpha=0.4)
+plt.plot(x.flatten(),map_of_x_before.flatten(),'*--',label='initial map output', color="red", alpha=0.8)
+plt.xlabel('x')
+plt.ylabel('y')
+plt.legend()
+plt.show()
 
 
+# + [markdown] id="uLCFIhyzjbD9"
+# Initial map with coefficients set to zero result in the identity map.
+
+# + [markdown] id="-FKbhG-khP1Y"
+# ## Transport map training
+
+# + [markdown] id="IavcRkvufGTX"
+# ### Objective function
+
+# + executionInfo={"elapsed": 171, "status": "ok", "timestamp": 1660500430021, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="UH_uKpMGfKiO"
 # Least squares objective
 def objective(coeffs, monotone_map, x, y_measured):
     monotone_map.SetCoeffs(coeffs)
     map_of_x = monotone_map.Evaluate(x)
     return np.sum((map_of_x - y_measured)**2)/x.shape[1]
 
-
-# gradient of objective
+# Gradient of objective
 def grad_objective(coeffs, monotone_map, x, y_measured):
     monotone_map.SetCoeffs(coeffs)
     map_of_x = monotone_map.Evaluate(x)
     return 2*np.sum(monotone_map.CoeffGrad(x, map_of_x - y_measured),1)/x.shape[1]
 
 
-# Before optimization
-map_of_x_before = monotone_map.Evaluate(x)
-error_before = objective(monotone_map.CoeffMap(), monotone_map, x, y_measured)
 
+# + [markdown] id="pmUuWhCLfRTh"
+# #### Optimization
 
+# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 197, "status": "ok", "timestamp": 1660500432396, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="DwAaj0iPfXY0" outputId="c8fb0441-e73d-4beb-e6a9-293bc8659889"
 # Optimize
-optimizer_options={'gtol': 1e-4, 'disp': True}
+optimizer_options={'gtol': 1e-3, 'disp': True}
 res = minimize(objective, monotone_map.CoeffMap(), args=(monotone_map, x, y_measured), jac=grad_objective, method='BFGS', options=optimizer_options)
-
 
 # After optimization
 map_of_x_after = monotone_map.Evaluate(x)
 error_after = objective(monotone_map.CoeffMap(), monotone_map, x, y_measured)
 
 
-# Plot data (before and after together)
-plt.figure()
-plt.title('Starting map error: {:.2E} / Final map error: {:.2E}'.format(error_before, error_after))
-plt.plot(x.flatten(),y_true.flatten(),'*--',label='true data', alpha=0.8)
-plt.plot(x.flatten(),y_measured.flatten(),'*--',label='measured data', alpha=0.4)
-plt.plot(x.flatten(),map_of_x_before.flatten(),'*--',label='initial map output', color="green", alpha=0.8)
-plt.plot(x.flatten(),map_of_x_after.flatten(),'*--',label='final map output', color="red", alpha=0.8)
-plt.legend()
-plt.show()
+# + [markdown] id="pPcsUgOtfzR8"
+# ### Plot final approximation
 
-
-# Plot data (before and after apart)
-plt.figure()
-plt.title('Starting map error: {:.2E}'.format(error_before))
-plt.plot(x.flatten(),y_true.flatten(),'*--',label='true data', alpha=0.8)
-plt.plot(x.flatten(),y_measured.flatten(),'*--',label='measured data', alpha=0.4)
-plt.plot(x.flatten(),map_of_x_before.flatten(),'*--',label='initial map output', color="green", alpha=0.8)
-plt.legend()
-plt.show()
-
-
+# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 2335, "status": "ok", "timestamp": 1660501911335, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="oaP2IIAr389X" outputId="cedd3c1a-b9ad-4d08-a226-d444d1bc2de0"
 plt.figure()
 plt.title('Final map error: {:.2E}'.format(error_after))
 plt.plot(x.flatten(),y_true.flatten(),'*--',label='true data', alpha=0.8)
-plt.plot(x.flatten(),y_measured.flatten(),'*--',label='measured data', alpha=0.4)
+plt.plot(x.flatten(),y_measured.flatten(),'*--',label='noisy data', color='orange',alpha=0.4)
 plt.plot(x.flatten(),map_of_x_after.flatten(),'*--',label='final map output', color="red", alpha=0.8)
+plt.xlabel('x')
+plt.ylabel('y')
 plt.legend()
 plt.show()
+
+# + [markdown] id="NtlNZmzGilxj"
+# Unlike the true underlying model, map approximation gives a strict coninuous monotone regression of the noisy data.
