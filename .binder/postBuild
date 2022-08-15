@@ -46,5 +46,5 @@ jupytext --set-formats ipynb,py StochasticVolatility.py
 #jupyter nbconvert --ExecutePreprocessor.timeout=3600 --to notebook --execute StochasticVolatility.ipynb
 
 cd ~/examples/cpp 
-python ~/.binder/CppToNotebook.py MonotoneLeastSquares/MonotoneLeastSquares.cpp MonotoneLeastSquares/MonotoneLeastSquares.ipynb
+python ~/.binder/CppToNotebook.py -i MonotoneLeastSquares/MonotoneLeastSquares.cpp -o MonotoneLeastSquares/MonotoneLeastSquares.ipynb
 #jupyter nbconvert --ExecutePreprocessor.timeout=3600 --to notebook --execute MonotoneLeastSquares/MonotoneLeastSquares.ipynb

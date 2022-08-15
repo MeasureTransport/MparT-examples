@@ -31,7 +31,8 @@ for part in parts:
 
     # Markdown cell
     if('/***' in part):
-        cells.append( nbf.v4.new_markdown_cell(part.strip()[4:-2]) )
+        if(len(part)>6):
+            cells.append( nbf.v4.new_markdown_cell(part.replace('\n', '')[4:-2]) )
                
     # Code cell
     else:
