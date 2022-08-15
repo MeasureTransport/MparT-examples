@@ -27,9 +27,9 @@ from scipy.optimize import minimize
 from scipy.stats import norm
 import matplotlib.pyplot as plt
 
-import mpart
+import mpart as mt
 
-print('Kokkos is using', mpart.Concurrency(), 'threads')
+print('Kokkos is using', mt.Concurrency(), 'threads')
 # -
 # The target distribution is given by $x\sim\mathcal{N}(2, 0.5)$.
 
@@ -55,13 +55,13 @@ plt.show()
 # Next we create a multi-index set and create a map. Affine transform should be enough to capture the Gaussian target.
 
 multis = np.array([[0], [1]])  # 
-mset = mpart.MultiIndexSet(multis)
+mset = mt.MultiIndexSet(multis)
 fixed_mset = mset.fix(True)
 
 # Now we set the map options (default in this case) and initialize the map
 
-opts = mpart.MapOptions()
-monotoneMap = mpart.CreateComponent(fixed_mset, opts)
+opts = mt.MapOptions()
+monotoneMap = mt.CreateComponent(fixed_mset, opts)
 
 # Next we optimize the coefficients of the map by minimizing the Kullback–Leibler divergence between the target and reference density.
 
