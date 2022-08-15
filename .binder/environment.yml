@@ -16,3 +16,4 @@ dependencies:
   - vim
   - nbconvert
   - pandas
+  - xeus-cling

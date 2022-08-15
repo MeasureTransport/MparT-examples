@@ -1,8 +1,13 @@
-/**
-TODO: ADD DESCRIPTION
- */
+/***
+# Monotone Least Squares 
 
+## Description
 
+*/
+
+/***
+### Std Library Includes
+*/
 #include <random>
 #include <fstream>
 #include <stdio.h>
@@ -10,13 +15,24 @@ TODO: ADD DESCRIPTION
 #include <Eigen/Core>
 #include <Eigen/Dense>
 
+/***
+### MParT Inclues
+*/
+
 #include <MParT/ConditionalMapBase.h>
 #include <MParT/MapFactory.h>
 #include <MParT/MultiIndices/MultiIndexSet.h>
 
+/***
+### Optimizer Include
+*/
 #include "../Optimizer.cpp"
 
 using namespace mpart; 
+
+/***
+## Example Code
+*/
 
 int main(int argc, char* argv[]){
 
@@ -62,6 +78,10 @@ int main(int argc, char* argv[]){
     // Save the data to a csv file for plotting
     std::ofstream file("data.dat");
     assert(file.is_open());
+
+/***
+### Save map evaluations to file
+*/
 
     file << "X" << "\t" << "Y_True" << "\t" << "Y_Obs" << "\t"<< "Map_Initial" << "\t" << "Map_Optimized" << "\n";
     for (size_t i = 0; i < num_points; ++i){
