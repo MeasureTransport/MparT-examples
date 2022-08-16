@@ -12,7 +12,7 @@
 # ---
 
 # + [markdown] id="C2Nh9W00oG1R"
-# # Monotone Least Squares 
+# # Monotone least squares 
 #
 # One direct use of the monotonicity property given by the transport map approximation to model monotone functions from noisy data. This is called isotonic regression and can be solved in our setting by minimizing the least squares objective function
 #
