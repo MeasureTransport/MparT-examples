@@ -1,14 +1,12 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
 #       jupytext_version: 1.14.0
-#   kernelspec:
-#     display_name: Python 3
-#     name: python3
 # ---
 
 # + [markdown] id="C2Nh9W00oG1R"
@@ -32,7 +30,7 @@
 # ## Imports
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 
-# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 148, "status": "ok", "timestamp": 1660499768766, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="HlTF_CnnH1tn" outputId="cd815b6c-37d6-4f2b-9243-8045003fb0d1"
+# +
 import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
@@ -50,7 +48,7 @@ plt.rcParams['figure.dpi'] = 110
 #
 # Here we choose to use the step function $H(x)=\text{sgn}(x-2)+1$ as the reference monotone function. It is worth noting that this function is not strictly monotone and piecewise continuous.
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 1526, "status": "ok", "timestamp": 1660499789684, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="gfOV6pIiL4vv" outputId="2803c9a5-d5a1-488d-d7e8-7f5ca74c8216"
+# +
 # variation interval
 num_points = 1000
 xmin, xmax = 0, 4
@@ -70,7 +68,7 @@ plt.show()
 #
 # Training data $y^i$ in the objective defined above are simulated by pertubating the reference data with a white Gaussian noise with a $0.4$ standard deviation.
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 1989, "status": "ok", "timestamp": 1660501250198, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="CNBHEwU1P_FN" outputId="71975fb5-b740-4d21-e246-6041bfca8e8b"
+# +
 noisesd = 0.4
 
 y_noise = noisesd*np.random.randn(num_points) 
@@ -93,7 +91,7 @@ plt.show()
 # + [markdown] id="OCbUoL58e9qP"
 # ### Multi-index set
 
-# + executionInfo={"elapsed": 172, "status": "ok", "timestamp": 1660500006080, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="gSqwNYlacDrV"
+# +
 # Define multi-index set
 max_order = 5
 multis = np.linspace(0,max_order,6).reshape(-1,1).astype(int)
@@ -109,7 +107,7 @@ monotone_map = mt.CreateComponent(fixed_mset, opts)
 # + [markdown] id="5SEyUE3mh8Ne"
 # ### Plot initial approximation
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 2756, "status": "ok", "timestamp": 1660501191658, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="gVV_IdCRh73C" outputId="1cf7b7cf-f0c5-4beb-d2cb-4eccdba3945b"
+# +
 # Before optimization
 map_of_x_before = monotone_map.Evaluate(x)
 error_before = np.sum((map_of_x_before - y_measured)**2)/x.shape[1]
@@ -135,7 +133,7 @@ plt.show()
 # + [markdown] id="IavcRkvufGTX"
 # ### Objective function
 
-# + executionInfo={"elapsed": 171, "status": "ok", "timestamp": 1660500430021, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="UH_uKpMGfKiO"
+# +
 # Least squares objective
 def objective(coeffs, monotone_map, x, y_measured):
     monotone_map.SetCoeffs(coeffs)
@@ -153,7 +151,7 @@ def grad_objective(coeffs, monotone_map, x, y_measured):
 # + [markdown] id="pmUuWhCLfRTh"
 # #### Optimization
 
-# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 197, "status": "ok", "timestamp": 1660500432396, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="DwAaj0iPfXY0" outputId="c8fb0441-e73d-4beb-e6a9-293bc8659889"
+# +
 # Optimize
 optimizer_options={'gtol': 1e-3, 'disp': True}
 res = minimize(objective, monotone_map.CoeffMap(), args=(monotone_map, x, y_measured), jac=grad_objective, method='BFGS', options=optimizer_options)
@@ -162,11 +160,10 @@ res = minimize(objective, monotone_map.CoeffMap(), args=(monotone_map, x, y_meas
 map_of_x_after = monotone_map.Evaluate(x)
 error_after = objective(monotone_map.CoeffMap(), monotone_map, x, y_measured)
 
-
 # + [markdown] id="pPcsUgOtfzR8"
 # ### Plot final approximation
+# -
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 441} executionInfo={"elapsed": 2335, "status": "ok", "timestamp": 1660501911335, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="oaP2IIAr389X" outputId="cedd3c1a-b9ad-4d08-a226-d444d1bc2de0"
 plt.figure()
 plt.title('Final map error: {:.2E}'.format(error_after))
 plt.plot(x.flatten(),y_true.flatten(),'*--',label='true data', alpha=0.8)
