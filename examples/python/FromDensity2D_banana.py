@@ -12,7 +12,7 @@
 # ---
 
 # + [markdown] id="u_tcbBTTACPG"
-# # Building a Transport Map from Density
+# # Transport Map from Density
 
 # + [markdown] id="esisiuaAFutM"
 # ##### Problem description
