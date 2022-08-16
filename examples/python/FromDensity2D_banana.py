@@ -1,13 +1,76 @@
-# # Construct map from banana density 2D
+# ---
+# jupyter:
+#   jupytext:
+#     text_representation:
+#       extension: .py
+#       format_name: light
+#       format_version: '1.5'
+#       jupytext_version: 1.14.0
+#   kernelspec:
+#     display_name: Python 3
+#     name: python3
+# ---
 
-from mpart import *
+# + [markdown] id="u_tcbBTTACPG"
+# # Building a Transport Map from Density
+
+# + [markdown] id="esisiuaAFutM"
+# ##### Problem description
+#
+# Knowing the closed form of unnormalized posterior $\bar{\pi}(\boldsymbol{\theta} |\mathbf{y})= \pi(\mathbf{y}|\boldsymbol{\theta})\pi(\boldsymbol{\theta})$, the objective is to find a map-induced density $\tilde{\pi}_{\mathbf{w}}(\mathbf{x})$ that is a good approximation to the posterior $\pi(\boldsymbol{\theta} |\mathbf{y})$.
+#
+# In order to characterize this posterior density, one method is to build a transport map.
+#
+# For the map from unnormalized density estimation, the objective function reads
+#
+# $$
+# J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) + \log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d),
+# $$
+#
+# where $T$ is the transport map pushing forward the standard normal $mathcal{N}(\mathbf{0},\mathbf{I}_d)$ to the target density $\pi(\mathbf{x})$, which will be the the posterior density in Bayesian inference applications.  The gradient of this objective function reads
+#
+# $$
+# \nabla_\mathbf{w} J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \nabla_\mathbf{w} T(\mathbf{z}^i;\mathbf{w}).\nabla_\mathbf{x}\log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) + \nabla_{\mathbf{w}}\log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d).
+# $$
+
+# + [markdown] id="qBQhKZKO_zUC"
+# ## Imports
+# First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
+
+# + id="8HEOlZ5P_3D3"
 import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
-import time
 
+import os
+os.environ['KOKKOS_NUM_THREADS'] = '8'
 
+import mpart as mt
+print('Kokkos is using', mt.Concurrency(), 'threads')
+plt.rcParams['figure.dpi'] = 110
+
+# + [markdown] id="B0xLTmNXASl4"
+# ## Reference density and samples
+#
+# In this example we use a 2D target density known as the *banana* density where the unnormalized probability density, samples and the exact transport map are known.
+#
+# The banana density is defined as:
+# $$
+# \pi(x_1,x_2) \propto N_1(x_1)\times N_1(x_2-x_1^2)
+# $$
+# where $N_1$ is the 1D standard normal density.
+#
+# The exact transport map that transport $\pi$ to the 2D standard normal density is defined as:
+# $$
+#     {T}^\text{true}(x_1,x_2)=
+#     \begin{bmatrix}
+# x_1\\
+# x_2 + x_1^2
+# \end{bmatrix}
+# $$
+
+# + colab={"base_uri": "https://localhost:8080/", "height": 1000} executionInfo={"elapsed": 972, "status": "ok", "timestamp": 1660413440049, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="TUHp3Q1HQm66" outputId="8884120b-dd73-4451-ce48-9b1dc26d9866"
 # Make reference samples for training
 num_points = 1000
 x = np.random.randn(2,num_points)
@@ -79,10 +142,8 @@ print(transport_map.CoeffMap())
 print('and error: {:.2E}'.format(obj(transport_map.CoeffMap(), transport_map, x)))
 print('==================')
 
-start=time.time()
 options={'gtol': 1e-4, 'disp': True}
 res = minimize(obj, transport_map.CoeffMap(), args=(transport_map, x), jac=grad_obj, method='BFGS', options=options)
-dt = time.time()-start
 
 # Print final coeffs and objective
 print('Final coeffs')
