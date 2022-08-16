@@ -243,11 +243,11 @@ plt.show()
 print('==================')
 print('Starting coeffs component 1:')
 print(S1.CoeffMap())
-print('error component 1: {:.2E}'.format(obj(S1.CoeffMap(), S1, test_x[:1,:])))
+print('Objective value for component 1: {:.2E}'.format(obj(S1.CoeffMap(), S1, test_x[:1,:])))
 print('==================')
 print('Starting coeffs component 2:')
 print(S2.CoeffMap())
-print('error component 2: {:.2E}'.format(obj(S2.CoeffMap(), S2, test_x)))
+print('Objective value for component 2: {:.2E}'.format(obj(S2.CoeffMap(), S2, test_x)))
 print('==================')
 # -
 
@@ -296,15 +296,15 @@ plt.ylabel('$r_2$')
 plt.show()
 
 
-# Print initial coeffs and objective
+# Print final coeffs and objective
 print('==================')
 print('Final coeffs component 1:')
 print(S1.CoeffMap())
-print('error component 1: {:.2E}'.format(obj(S1.CoeffMap(), S1, test_x[:1,:])))
+print('Objective value for component 1: {:.2E}'.format(obj(S1.CoeffMap(), S1, test_x[:1,:])))
 print('==================')
 print('Final coeffs component 2:')
 print(S2.CoeffMap())
-print('error component 2: {:.2E}'.format(obj(S2.CoeffMap(), S2, test_x)))
+print('Objective value for component 2: {:.2E}'.format(obj(S2.CoeffMap(), S2, test_x)))
 print('==================')
 # -
 
