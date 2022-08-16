@@ -13,7 +13,6 @@
 #     name: python3
 # ---
 
-# + [markdown] id="C2Nh9W00oG1R"
 # # Monotone least squares 
 # The objective of this example is to show how to build a transport map to solve monotone regression problems using MParT.
 # ## Problem formulation
@@ -31,7 +30,6 @@
 #
 # The implementation of `S(x)` we're using from MParT, provides tools for both evaluating the map to compute  $S(x^i;\mathbf{w})$ but also evaluating computing the action of  $\left[\nabla_\mathbf{w}S(x^i;\mathbf{w})\right]^T$ on a vector, which is useful for computing the gradient.   Below, these features are leveraged when defining an objective function that we then minimize with the BFGS optimizer implemented in `scipy.minimize`.
 
-# + [markdown] id="PtPxsHllIM9z"
 # ## Imports
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 
@@ -46,7 +44,6 @@ import mpart as mt
 print('Kokkos is using', mt.Concurrency(), 'threads')
 plt.rcParams['figure.dpi'] = 110
 
-# + [markdown] id="2YgtK-z9Kngp"
 # ## Generate training data
 #
 # ### True model
@@ -68,7 +65,6 @@ plt.xlabel('x')
 plt.ylabel('H(x)')
 plt.show()
 
-# + [markdown] id="b53nbHArPcO9"
 # ### Training data
 #
 # Training data $y^i$ in the objective defined above are simulated by pertubating the reference data with a white Gaussian noise with a $0.4$ standard deviation.
@@ -86,14 +82,12 @@ plt.xlabel('x')
 plt.ylabel('y')
 plt.show()
 
-# + [markdown] id="twv58XPES-jv"
 # ## Map initialization
 #
 # We use the previously generated data to train the 1D transport map. In 1D, the map complexity can be set via the list of multi-indices. Here, map complexity can be tuned by setting the `max_order` variable.
 #
 #
 
-# + [markdown] id="OCbUoL58e9qP"
 # ### Multi-index set
 
 # +
@@ -109,7 +103,6 @@ opts.quadMinSub = 4;
 
 monotone_map = mt.CreateComponent(fixed_mset, opts)
 
-# + [markdown] id="5SEyUE3mh8Ne"
 # ### Plot initial approximation
 
 # +
@@ -129,13 +122,10 @@ plt.legend()
 plt.show()
 
 
-# + [markdown] id="uLCFIhyzjbD9"
 # Initial map with coefficients set to zero result in the identity map.
 
-# + [markdown] id="-FKbhG-khP1Y"
 # ## Transport map training
 
-# + [markdown] id="IavcRkvufGTX"
 # ### Objective function
 
 # +
@@ -153,7 +143,6 @@ def grad_objective(coeffs, monotone_map, x, y_measured):
 
 
 
-# + [markdown] id="pmUuWhCLfRTh"
 # #### Optimization
 
 # +
@@ -165,7 +154,6 @@ res = minimize(objective, monotone_map.CoeffMap(), args=(monotone_map, x, y_meas
 map_of_x_after = monotone_map.Evaluate(x)
 error_after = objective(monotone_map.CoeffMap(), monotone_map, x, y_measured)
 
-# + [markdown] id="pPcsUgOtfzR8"
 # ### Plot final approximation
 # -
 
@@ -179,5 +167,4 @@ plt.ylabel('y')
 plt.legend()
 plt.show()
 
-# + [markdown] id="NtlNZmzGilxj"
 # Unlike the true underlying model, map approximation gives a strict coninuous monotone regression of the noisy data.
