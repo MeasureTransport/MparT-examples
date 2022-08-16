@@ -1,19 +1,10 @@
+name: mpart-examples
 channels:
   - conda-forge
-  - defaults
 dependencies:
-  - python
   - eigen
   - pybind11
-  - catch2
   - cmake
-  - gcc
-  - gxx
   - jupytext
-  - numpy 
-  - scipy
-  - matplotlib 
-  - vim
-  - nbconvert
-  - pandas
   - xeus-cling
+  - notebook 

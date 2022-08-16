@@ -9,7 +9,7 @@ mkdir .installations
 mkdir .work
 cd .work
 
-git clone https://github.com/kokkos/kokkos.git
+git clone --depth 1 https://github.com/kokkos/kokkos.git
 mkdir kokkos/build
 cd kokkos/build
 cmake -DCMAKE_INSTALL_PREFIX=$PREFIX \
