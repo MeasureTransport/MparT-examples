@@ -13,7 +13,7 @@
 # ---
 
 # + [markdown] id="fIBtfqsglfs-"
-# # Building a Transport Map from Samples
+# # Transport map from samples
 
 # + [markdown] id="XdNi4u-sjM9p"
 # From the definition of a transport map, the *function* $S(\mathbf{x}; \mathbf{w})$ is invertible and have a positive definite Jacobian for any parameters $w$.  Combined with a probability density $\eta(\mathbf{r})$, we 
