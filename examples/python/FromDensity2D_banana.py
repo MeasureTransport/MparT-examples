@@ -11,22 +11,6 @@
 #     name: python3
 # ---
 
-# + colab={"base_uri": "https://localhost:8080/"} id="UhSY7G5e_tTo" executionInfo={"status": "ok", "timestamp": 1660685063237, "user_tz": 240, "elapsed": 106692, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="517b7e6e-d8e7-401f-9302-57acdfae0812"
-# !git clone https://rubiop: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@github.com/MeasureTransport/MParT.git
-# !apt update
-# !apt install -y cmake
-# %cd MParT/
-# !mkdir build
-# %cd build
-# !cmake -DCMAKE_INSTALL_PREFIX=../../Installations/MParT -DPYTHON_EXECUTABLE=`which python` -DMPART_JULIA=OFF -DKokkos_ENABLE_PTHREAD=ON -DKokkos_ENABLE_SERIAL=ON ..
-# !make install
-
-# + colab={"base_uri": "https://localhost:8080/"} id="onYfAXS__vgG" executionInfo={"status": "ok", "timestamp": 1660685063832, "user_tz": 240, "elapsed": 613, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="293007d9-38a5-4059-c4f5-57201f888a59"
-import sys
-import os
-sys.path.insert(1, "../../Installations/MParT/python/")
-# !cp -r ../../Installations/MParT/lib/* ../../../usr/lib #required as including path doesn't 
-
 # + [markdown] id="u_tcbBTTACPG"
 # # Transport Map from density
 #
@@ -45,7 +29,7 @@ sys.path.insert(1, "../../Installations/MParT/python/")
 # ## Imports
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 
-# + colab={"base_uri": "https://localhost:8080/"} id="8HEOlZ5P_3D3" executionInfo={"status": "ok", "timestamp": 1660685063832, "user_tz": 240, "elapsed": 4, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="b777ffce-e1e9-4fa4-defa-cfcf486ea0e9"
+# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 4, "status": "ok", "timestamp": 1660685063832, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="8HEOlZ5P_3D3" outputId="b777ffce-e1e9-4fa4-defa-cfcf486ea0e9"
 import numpy as np
 from scipy.optimize import minimize
 import matplotlib.pyplot as plt
@@ -82,7 +66,7 @@ plt.rcParams['figure.dpi'] = 110
 # + [markdown] id="zXg7O7e28ACZ"
 # Contours of the target density can be visualized as:
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 418} id="4lp6EcTg7-47" executionInfo={"status": "ok", "timestamp": 1660685065326, "user_tz": 240, "elapsed": 1496, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="026b0c0e-336e-4d9f-d294-5bf79200beae"
+# + colab={"base_uri": "https://localhost:8080/", "height": 418} executionInfo={"elapsed": 1496, "status": "ok", "timestamp": 1660685065326, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="4lp6EcTg7-47" outputId="026b0c0e-336e-4d9f-d294-5bf79200beae"
 # Unnomalized target density required for objective
 def target_logpdf(x): 
   rv1 = multivariate_normal(np.zeros(1),np.eye(1))
@@ -133,7 +117,7 @@ plt.show()
 # + [markdown] id="5KqOCRqq54lb"
 # The objective function and gradient can be defined using MParT as:
 
-# + id="peZCC2Bi6pBb" executionInfo={"status": "ok", "timestamp": 1660685065327, "user_tz": 240, "elapsed": 5, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}}
+# + executionInfo={"elapsed": 5, "status": "ok", "timestamp": 1660685065327, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="peZCC2Bi6pBb"
 # KL divergence objective
 def obj(coeffs, transport_map, x):
     transport_map.SetCoeffs(coeffs)
@@ -164,7 +148,7 @@ def grad_obj(coeffs, transport_map, x):
 # + [markdown] id="ylbGzU1L97LJ"
 # For the parameterization of $T$ we use a total order multivariate expansion of hermite functions. Knowing $T^\text{true}$, any parameterization with total order greater than one will include the true solution of the map finding problem.
 
-# + id="goxPI2vPHAlk" executionInfo={"status": "ok", "timestamp": 1660685065327, "user_tz": 240, "elapsed": 4, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}}
+# + executionInfo={"elapsed": 4, "status": "ok", "timestamp": 1660685065327, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="goxPI2vPHAlk"
 # Set-up first component and initialize map coefficients
 map_options = mt.MapOptions()
 
@@ -178,7 +162,7 @@ transport_map = mt.CreateTriangular(2,2,total_order,map_options)
 #
 # Coefficients of triangular map are set to 0 upon creation.
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 396} id="p9Ce64DDLewW" executionInfo={"status": "ok", "timestamp": 1660685067081, "user_tz": 240, "elapsed": 1757, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="e06cf570-5de0-4e50-ce06-2005988c85e8"
+# + colab={"base_uri": "https://localhost:8080/", "height": 396} executionInfo={"elapsed": 1757, "status": "ok", "timestamp": 1660685067081, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="p9Ce64DDLewW" outputId="e06cf570-5de0-4e50-ce06-2005988c85e8"
 # Make reference samples for training
 num_points = 10000
 z = np.random.randn(2,num_points)
@@ -202,7 +186,7 @@ plt.show()
 # + [markdown] id="qSi3SLCkMKwi"
 # Initial objective and coefficients:
 
-# + colab={"base_uri": "https://localhost:8080/"} id="sN38ZQ_tOReR" executionInfo={"status": "ok", "timestamp": 1660687874229, "user_tz": 240, "elapsed": 461, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="784b019e-c75c-4cfd-a4bf-a8c5976bfd1c"
+# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 461, "status": "ok", "timestamp": 1660687874229, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="sN38ZQ_tOReR" outputId="784b019e-c75c-4cfd-a4bf-a8c5976bfd1c"
 # Print initial coeffs and objective
 print('==================')
 print('Starting coeffs')
@@ -213,7 +197,7 @@ print('==================')
 # + [markdown] id="uUIHJZYiQ2qH"
 # ### Minimization
 
-# + colab={"base_uri": "https://localhost:8080/"} id="UQPYuHgbMOSN" executionInfo={"status": "ok", "timestamp": 1660687878949, "user_tz": 240, "elapsed": 422, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="5ff0a767-a8b5-4489-8ef8-e716544a626a"
+# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 422, "status": "ok", "timestamp": 1660687878949, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="UQPYuHgbMOSN" outputId="5ff0a767-a8b5-4489-8ef8-e716544a626a"
 print('==================')
 options={'gtol': 1e-4, 'disp': True}
 res = minimize(obj, transport_map.CoeffMap(), args=(transport_map, z), jac=grad_obj, method='BFGS', options=options)
@@ -230,7 +214,7 @@ print('==================')
 # + [markdown] id="3oZ4tBzvS8gY"
 # #### Pushed samples
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 396} id="FD1NdxXDRUtJ" executionInfo={"status": "ok", "timestamp": 1660687289413, "user_tz": 240, "elapsed": 2315, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="8dfd0767-ff78-4664-c0a1-8a8d0d749661"
+# + colab={"base_uri": "https://localhost:8080/", "height": 396} executionInfo={"elapsed": 2315, "status": "ok", "timestamp": 1660687289413, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="FD1NdxXDRUtJ" outputId="8dfd0767-ff78-4664-c0a1-8a8d0d749661"
 # Pushed samples
 x = transport_map.Evaluate(test_z)
 
@@ -259,7 +243,7 @@ plt.show()
 # + [markdown] id="XBFrEH_EmGs1"
 # The variance diagnostic can be computed as follow:
 
-# + id="GB-RIl_OmL2V" executionInfo={"status": "ok", "timestamp": 1660686511924, "user_tz": 240, "elapsed": 459, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}}
+# + executionInfo={"elapsed": 459, "status": "ok", "timestamp": 1660686511924, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="GB-RIl_OmL2V"
 def variance_diagnostic(tri_map,ref,target_logpdf,x):
   ref_logpdf = ref.logpdf(x.T)
   y = tri_map.Evaluate(x)
@@ -270,7 +254,7 @@ def variance_diagnostic(tri_map,ref,target_logpdf,x):
   return var
 
 
-# + colab={"base_uri": "https://localhost:8080/"} id="nec-_RISnzNz" executionInfo={"status": "ok", "timestamp": 1660686747264, "user_tz": 240, "elapsed": 384, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="d204114b-9427-4f52-d8c6-5e8ceafe226a"
+# + colab={"base_uri": "https://localhost:8080/"} executionInfo={"elapsed": 384, "status": "ok", "timestamp": 1660686747264, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="nec-_RISnzNz" outputId="d204114b-9427-4f52-d8c6-5e8ceafe226a"
 # Reference distribution
 ref_distribution = multivariate_normal(np.zeros(2),np.eye(2));
 
@@ -289,7 +273,7 @@ print('==================')
 # + [markdown] id="EXhbZjtmptiY"
 # We can also plot the contour of the unnormalized density $\bar{\pi}$ and the pushforward approximation $T_\sharp \eta$:
 
-# + colab={"base_uri": "https://localhost:8080/", "height": 418} id="NpngB9t89JR7" executionInfo={"status": "ok", "timestamp": 1660687269539, "user_tz": 240, "elapsed": 2659, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}} outputId="d46cc68b-6d55-43e5-9bd8-7ac291bcab74"
+# + colab={"base_uri": "https://localhost:8080/", "height": 418} executionInfo={"elapsed": 2659, "status": "ok", "timestamp": 1660687269539, "user": {"displayName": "Paul-Baptiste RUBIO", "userId": "15146079832390040200"}, "user_tz": 240} id="NpngB9t89JR7" outputId="d46cc68b-6d55-43e5-9bd8-7ac291bcab74"
 # Pushforward definition
 def push_forward_pdf(tri_map,ref,x):
   xinv = tri_map.Inverse(x,x)
