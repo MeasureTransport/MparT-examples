@@ -14,7 +14,7 @@
 
 # + [markdown] id="fIBtfqsglfs-"
 # # Transport map from samples
-# 
+# The objective of this example is to show how a transport map can be build in MParT when samples from the target density are known.
 # ## Problem formulation
 # + [markdown] id="XdNi4u-sjM9p"
 # From the definition of a transport map, the *function* $S(\mathbf{x}; \mathbf{w})$ is invertible and have a positive definite Jacobian for any parameters $w$.  Combined with a probability density $\eta(\mathbf{r})$, we 
