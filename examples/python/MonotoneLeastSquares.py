@@ -13,7 +13,8 @@
 
 # + [markdown] id="C2Nh9W00oG1R"
 # # Monotone least squares 
-#
+# The objective of this example is to show how to build a transport map to solve monotone regression problems using MParT.
+# ## Problem formulation
 # One direct use of the monotonicity property given by the transport map approximation to model monotone functions from noisy data. This is called isotonic regression and can be solved in our setting by minimizing the least squares objective function
 #
 # $$
