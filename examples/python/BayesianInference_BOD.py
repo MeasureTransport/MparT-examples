@@ -8,20 +8,6 @@
 #       jupytext_version: 1.14.0
 # ---
 
-# !git clone https://rubiop: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@github.com/MeasureTransport/MParT.git
-# !apt update
-# !apt install -y cmake
-# %cd MParT/
-# !mkdir build
-# %cd build
-# !cmake -DCMAKE_INSTALL_PREFIX=../../Installations/MParT -DPYTHON_EXECUTABLE=`which python` -DMPART_JULIA=OFF -DKokkos_ENABLE_PTHREAD=ON -DKokkos_ENABLE_SERIAL=ON ..
-# !make install
-
-import sys
-import os
-sys.path.insert(1, "../../Installations/MParT/python/")
-# !cp -r ../../Installations/MParT/lib/* ../../../usr/lib #required as including path doesn't 
-
 # + [markdown] id="9isq0kRHqy2M"
 # # Characterization of Bayesian posterior density
 
