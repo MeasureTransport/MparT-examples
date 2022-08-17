@@ -1,20 +1,22 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py:light
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
 #       jupytext_version: 1.14.0
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
 # ---
 
-# + [markdown] id="9isq0kRHqy2M"
 # # Characterization of Bayesian posterior density
 
-# + [markdown] id="DsDN4_aL41ia"
 # The objective of this example is to demonstrate how transport maps can be used to represent posterior distribution of Bayesian inference problems.
 
-# + [markdown] id="ctOeaT_A2xvu"
 # ## Imports
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 
@@ -33,13 +35,12 @@ print('Kokkos is using', mt.Concurrency(), 'threads')
 plt.rcParams['figure.dpi'] = 110
 
 
-# + [markdown] id="5xjsscNG9bW_"
+# -
+
 # ## Problem formulation
 
-# + [markdown] id="UvT4HB1L5DDD"
 # ### Bayesian inference
 
-# + [markdown] id="61mDS9c_XESi"
 #  A way construct a transport map is from an unnormalized density. One situation where we know the probality density function up to a normalization constant is when modeling inverse problems with Bayesian inference.
 #
 # For an inverse problem, the objective is to characterize the value of some parameters $\boldsymbol{\theta}$ of a given system, knowing some the value of some noisy observations $\mathbf{y}$.
@@ -59,10 +60,8 @@ plt.rcParams['figure.dpi'] = 110
 #
 # where $c = \int \pi(\mathbf{y}|\boldsymbol{\theta}) \pi(\boldsymbol{\theta}) d\theta$ is an normalizing constant that ensures that the product of the two quantities is a proper density.  Typically, the integral in this definition cannot be evaluated and $c$ is assumed to be unknown.
 
-# + [markdown] id="c2DHoOEg8NBP"
 # The objective of this examples is, from the knowledge of $\pi(\mathbf{y}|\boldsymbol{\theta})\pi(\boldsymbol{\theta})$ build a transport map that transports samples from the reference $\eta$ to samples from posterior $\pi(\boldsymbol{\theta}|\mathbf{y})$.
 
-# + [markdown] id="z4NQ5TfSfHbC"
 # ### Application with the Biochemical Oxygen Demand (BOD) model
 #
 # #### Definiiton
@@ -87,7 +86,6 @@ plt.rcParams['figure.dpi'] = 110
 #
 # The objective is to characterize the posterior density of parameters $\boldsymbol{\theta}=(\theta_1,\theta_2)$ knowing observation of the system at time $t=\left\{1,2,3,4,5 \right\}$ i.e. $\mathbf{y} = (y_1,y_2,y_3,y_4,y_5) = (\mathcal{B}(1),\mathcal{B}(2),\mathcal{B}(3),\mathcal{B}(4),\mathcal{B}(5))$.
 
-# + [markdown] id="h-Oenx4-Ey4N"
 # Definition of the forward model and gradient with respect to $\mathbf{\theta}$:
 
 # +
@@ -107,13 +105,13 @@ def grad_x_forward_model(p1,p2,t):
   return np.vstack((dOutdx1,dOutdx2))
 
 
-# + [markdown] id="CjKdMADg_m0u"
+# -
+
 # For this problem, as noise $\mathcal{E}$ is Gaussian and additive, the likelihood function $\pi(\mathbf{y}|\boldsymbol{\theta})$, can be decomposed for each time step as:
 # $$\pi(\mathbf{y}|\boldsymbol{\theta}) = \prod_{t}^{5} \pi(y_t|\boldsymbol{\theta}), $$
 # where 
 # $$\pi(\mathbf{y}_t|\boldsymbol{\theta})=\frac{1}{\sqrt{0.002.\pi}}\exp \left(-\frac{1}{0.002} \left(y_t - \mathcal{B}(t)\right)^2 \right), t \in \{1,...,5\}.$$
 
-# + [markdown] id="27jeo8MtFO4X"
 # Likelihood function and its gradient with respect to parameters:
 
 # +
@@ -129,7 +127,8 @@ def grad_x_log_likelihood(std_noise,t,yobs,p1,p2):
   return grad_x_lkl
 
 
-# + [markdown] id="RZbMGjB8D2fu"
+# -
+
 # We can then define the unnormalized posterior and its gradient with respect to parameters:
 
 # +
@@ -151,7 +150,8 @@ def grad_x_log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,p1,p2)
   return grad_x_log_posterior
 
 
-# + [markdown] id="M2c_CaNNU23t"
+# -
+
 # #### Observations
 #
 # We consider the following realization of observation $\mathbf{y}$:
@@ -163,8 +163,8 @@ list_yobs = np.array([0.18,0.32,0.42,0.49,0.54])
 std_noise = np.sqrt(1e-3)
 std_prior1 = 1
 std_prior2 = 1
+# -
 
-# + [markdown] id="qCRL8_P1Wr8h"
 # #### Visualization of the **unnormalized** posterior density
 
 # +
@@ -184,16 +184,14 @@ ax.set_ylabel(r'$\theta_2$')
 plt.show()
 
 
-# + [markdown] id="u0sOb_fYIctQ"
+# -
+
 # Target density for the map from density is non-Gaussian which mean that a non linear map will be required to achieve good approximation.
 
-# + [markdown] id="0owP1UJ8Ix8z"
 # ## Map computation
 
-# + [markdown] id="xfoCFxnuI5NG"
 # After the definition of the log-posterior and gradient, the construction of the desired map $T$ to characterize the posterior density result in a "classic" map from unnomarlized computation.
 
-# + [markdown] id="guYpL1CNXTkm"
 # ### Definition of the objective function:
 #
 # Knowing the closed form of unnormalized posterior $\bar{\pi}(\boldsymbol{\theta} |\mathbf{y})= \pi(\mathbf{y}|\boldsymbol{\theta})\pi(\boldsymbol{\theta})$, the objective is to find a map-induced density $\tilde{\pi}_{\mathbf{w}}(\mathbf{x})$ that is a good approximation to the posterior $\pi(\boldsymbol{\theta} |\mathbf{y})$.
@@ -245,37 +243,28 @@ def grad_obj(coeffs, tri_map, x):
 N=10000
 Xtrain = np.random.randn(2,N)
 
-# + [markdown] id="DHkXWX0NXm1_"
 # #### Map parametrization
 
-# + [markdown] id="D_5ldC20KlQO"
 # We use the MParT function `CreateTriangular` to directly create a transport map object of dimension with given total order parameterization.
 #
 #
-# -
 
 # Create transport map
 opts = mt.MapOptions()
 total_order = 3
 tri_map = mt.CreateTriangular(2,2,total_order,opts)
 
-# + [markdown] id="ka4c_7B_LyPc"
 # #### Optimization
-# -
 
 options={'gtol': 1e-2, 'disp': True}
 res = scipy.optimize.minimize(obj, tri_map.CoeffMap(), args=(tri_map, Xtrain), jac=grad_obj, method='BFGS', options=options)
 
 
-# + [markdown] id="Mw2u1F6QO53r"
 # ## Accuracy checks
 
-# + [markdown] id="Ju10kojxjc9w"
 # ### Comparing density contours 
 
-# + [markdown] id="_mzlD4IRPhyc"
 # Comparison between contours of the posterior $\pi(\boldsymbol{\theta}|\mathbf{y})$ and conoturs of pushforward density $T_\sharp \eta$.
-# -
 
 # Pushforward distribution
 def push_forward_pdf(tri_map,ref,x):
@@ -304,7 +293,8 @@ ax.legend([h1[0], h2[0]], ['Unnormilzed posterior', 'TM approximation'])
 plt.show()
 
 
-# + [markdown] id="-FH-hDaPUxLp"
+# -
+
 # ### Variance diagnostic
 #
 # A commonly used accuracy check when facing computation maps from density is the so-called variance diagnostic defined as:
@@ -312,7 +302,6 @@ plt.show()
 # $$ \epsilon_\sigma = \frac{1}{2} \mathbb{V}\text{ar}_\rho \left[ \log \frac{\rho}{T^\sharp \bar{\pi}} \right] $$
 #
 # This diagnostic is asymptotically equivalent to the minimized KL divergence $D_{KL}(\eta || T^\sharp \pi)$ and should converge to zero when the computed map converge to the theoritical true map.
-# -
 
 def variance_diagnostic(tri_map,ref,target_logpdf,x):
   ref_logpdf = ref.logpdf(x.T)
@@ -336,8 +325,8 @@ var_diag = variance_diagnostic(tri_map,ref,log_target,test_z)
 print('==================')
 print('Variance diagnostic: {:.2E}'.format(var_diag))
 print('==================')
+# -
 
-# + [markdown] id="tO12yfcI-8SQ"
 # ### Drawing samples from approximate posterior
 #
 # Once the transport map from reference to unnormalized posterior is estimated it can be used to sample from the posterior to characterize the Bayesian inference solution. 
@@ -363,17 +352,14 @@ axs[1].set_title('Reference Samples')
 
 
 plt.show()
-
-# + [markdown] id="cpeZF5TjCYOX"
-# Samples can then be used to compute quantity of interest with respect to parameters $\boldsymbol{\theta}$. For example the sample mean:
 # -
+
+# Samples can then be used to compute quantity of interest with respect to parameters $\boldsymbol{\theta}$. For example the sample mean:
 
 X_mean = np.mean(Xpost,1)
 print('Mean a posteriori: '+str(X_mean))
 
-# + [markdown] id="kvedTHn0j2SX"
 # Samples can also be used to study parameters marginas. Here are the one-dimensional marginals histograms:
-# -
 
 fig, ax = plt.subplots(1,2,figsize=(12,5))
 ax[0].hist(Xpost[0,:], 50, alpha=0.5, density=True)
