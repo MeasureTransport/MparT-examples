@@ -8,7 +8,7 @@
 #       format_version: '1.5'
 #       jupytext_version: 1.14.0
 #   kernelspec:
-#     display_name: Python 3 (ipykernel)
+#     display_name: Python 3.8.5 ('base')
 #     language: python
 #     name: python3
 # ---
@@ -327,6 +327,17 @@ print('==================')
 
 # Since the true transport map for this problem is known, we can compare directly map evaluations component by component.
 
+# +
+# Evaluation grid
+
+ngrid=100
+x1_t = np.linspace(-3,3,ngrid)
+x2_t = np.linspace(-3,7.5,ngrid)
+xx1,xx2 = np.meshgrid(x1_t,x2_t)
+
+xx = np.vstack((xx1.reshape(1,-1),xx2.reshape(1,-1)))
+# -
+
 # ##### First component
 
 plt.figure()
@@ -338,14 +349,6 @@ plt.legend()
 plt.show()
 
 # ##### Second component
-
-# +
-ngrid=100
-x1_t = np.linspace(-3,3,ngrid)
-x2_t = np.linspace(-3,7.5,ngrid)
-xx1,xx2 = np.meshgrid(x1_t,x2_t)
-
-xx = np.vstack((xx1.reshape(1,-1),xx2.reshape(1,-1)))
 
 # +
 map_eval_true =  xx[1,:] - xx[0,:]**2
