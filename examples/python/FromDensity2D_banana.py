@@ -1,6 +1,7 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py
 #     text_representation:
 #       extension: .py
 #       format_name: light
@@ -12,12 +13,10 @@
 #     name: python3
 # ---
 
-# + [markdown] id="u_tcbBTTACPG"
 # # Transport Map from density
 #
 # The objective of this example is to show how a transport map can be build in MParT when the the unnormalized probability density function of the target density is known.
 
-# + [markdown] id="esisiuaAFutM"
 # ## Problem description
 #
 # We consider $T(\mathbf{z};\mathbf{w})$ a monotone triangular transport map parameterized by $\mathbf{w}$ (e.g., polynomial coefficients). This map which is invertible and has an invertible Jacobian for any parameter $\mathbf{w}$, transports samples $\mathbf{z}^i$ from the reference density $\eta$ to samples $T(\mathbf{z}^i;\mathbf{w})$ from the map induced density $\tilde{\pi}_\mathbf{w}(\mathbf{z})$ defined as:
@@ -26,7 +25,6 @@
 #
 # The objective of this example is, knowing some unnormalized target density $\bar{\pi}$, find the map $T$ that transport samples drawn from $\eta$ to samples drawn from the target $\pi$.
 
-# + [markdown] id="qBQhKZKO_zUC"
 # ## Imports
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 
@@ -44,7 +42,8 @@ print('Kokkos is using', mt.Concurrency(), 'threads')
 plt.rcParams['figure.dpi'] = 110
 
 
-# + [markdown] id="B0xLTmNXASl4"
+# -
+
 # ## Target density and exact map
 #
 # In this example we use a 2D target density known as the *banana* density where the unnormalized probability density, samples and the exact transport map are known.
@@ -64,7 +63,6 @@ plt.rcParams['figure.dpi'] = 110
 # \end{bmatrix}
 # $$
 
-# + [markdown] id="zXg7O7e28ACZ"
 # Contours of the target density can be visualized as:
 
 # +
@@ -98,7 +96,8 @@ legend1 = ax.legend([h1[0]], ['target density'])
 plt.show()
 
 
-# + [markdown] id="jgwN-yxSqJH6"
+# -
+
 # ## Map training
 # ### Defining objective function and its gradient
 # Knowing the closed form of the unnormalized target density $\bar{\pi}$, the objective is to find a map-induced density $\tilde{\pi}_{\mathbf{w}}(\mathbf{z})$ that is a good approximation of the target $\pi$.
@@ -115,7 +114,6 @@ plt.show()
 # \nabla_\mathbf{w} J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \nabla_\mathbf{w} T(\mathbf{z}^i;\mathbf{w}).\nabla_\mathbf{x}\log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) + \nabla_{\mathbf{w}}\log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d).
 # $$
 
-# + [markdown] id="5KqOCRqq54lb"
 # The objective function and gradient can be defined using MParT as:
 
 # +
@@ -143,10 +141,10 @@ def grad_obj(coeffs, transport_map, x):
     return -np.sum(grad_logpdf + grad_log_det, 1)/num_points
 
 
-# + [markdown] id="pXYBixXl6ohJ"
+# -
+
 # ### Map parameterization
 
-# + [markdown] id="ylbGzU1L97LJ"
 # For the parameterization of $T$ we use a total order multivariate expansion of hermite functions. Knowing $T^\text{true}$, any parameterization with total order greater than one will include the true solution of the map finding problem.
 
 # +
@@ -157,8 +155,8 @@ total_order = 2
 
 # Create dimension 2 triangular map 
 transport_map = mt.CreateTriangular(2,2,total_order,map_options)
+# -
 
-# + [markdown] id="QJBY9SlnKcDL"
 # ### Approximation before optimization
 #
 # Coefficients of triangular map are set to 0 upon creation.
@@ -180,13 +178,11 @@ plt.contour(xx1, xx2, target_pdf_at_grid.reshape(ngrid,ngrid))
 plt.scatter(x[0],x[1], facecolor='blue', alpha=0.1, label='Pushed samples')
 plt.legend()
 plt.show()
+# -
 
-# + [markdown] id="lh2eRnPmsoCo"
 # At initialization, samples are "far" from being distributed according to the banana distribution.
 
-# + [markdown] id="qSi3SLCkMKwi"
 # Initial objective and coefficients:
-# -
 
 # Print initial coeffs and objective
 print('==================')
@@ -195,7 +191,6 @@ print(transport_map.CoeffMap())
 print('Initial objective value: {:.2E}'.format(obj(transport_map.CoeffMap(), transport_map, test_z)))
 print('==================')
 
-# + [markdown] id="uUIHJZYiQ2qH"
 # ### Minimization
 
 # +
@@ -208,11 +203,10 @@ print('Final coeffs:')
 print(transport_map.CoeffMap())
 print('Final objective value: {:.2E}'.format(obj(transport_map.CoeffMap(), transport_map, test_z)))
 print('==================')
+# -
 
-# + [markdown] id="rz8sIzXARqhX"
 # ### Approximation after optimization
 
-# + [markdown] id="3oZ4tBzvS8gY"
 # #### Pushed samples
 
 # +
@@ -227,23 +221,19 @@ plt.legend()
 plt.show()
 
 
-# + [markdown] id="HDg9ajFEje08"
+# -
+
 # After optimization, pushed samples $T(z^i)$, $z^i \sim \mathcal{N}(0,I)$ are approximately distributed according to the target $\pi$
 
-# + [markdown] id="vTG5Es2nSfSi"
 # #### Variance diagnostic
 
-# + [markdown] id="ZhC7Xt0CkDlK"
 # A commonly used accuracy check when facing computation maps from density is the so-called variance diagnostic defined as:
 #
 # $$ \epsilon_\sigma = \frac{1}{2} \mathbb{V}\text{ar}_\rho \left[ \log \frac{\rho}{T^\sharp \bar{\pi}} \right] $$
 
-# + [markdown] id="z5ok9USIlEau"
 # This diagnostic is asymptotically equivalent to the minimized KL divergence $D_{KL}(\eta || T^\sharp \pi)$ and should converge to zero when the computed map converge to the true map.
 
-# + [markdown] id="XBFrEH_EmGs1"
 # The variance diagnostic can be computed as follow:
-# -
 
 def variance_diagnostic(tri_map,ref,target_logpdf,x):
   ref_logpdf = ref.logpdf(x.T)
@@ -268,10 +258,10 @@ print('Variance diagnostic: {:.2E}'.format(var_diag))
 print('==================')
 
 
-# + [markdown] id="272AyrE89BO6"
+# -
+
 # #### Pushforward density
 
-# + [markdown] id="EXhbZjtmptiY"
 # We can also plot the contour of the unnormalized density $\bar{\pi}$ and the pushforward approximation $T_\sharp \eta$:
 
 # +
@@ -293,4 +283,7 @@ h1,_ = CS1.legend_elements()
 h2,_ = CS2.legend_elements()
 legend1 = ax.legend([h1[0], h2[0]], ['Unnormalized target', 'TM approximation'])
 plt.show()
+
+# -
+
 
