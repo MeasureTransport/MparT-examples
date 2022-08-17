@@ -62,9 +62,9 @@ plt.rcParams['figure.dpi'] = 110
 
 # The objective of this examples is, from the knowledge of $\pi(\mathbf{y}|\boldsymbol{\theta})\pi(\boldsymbol{\theta})$ build a transport map that transports samples from the reference $\eta$ to samples from posterior $\pi(\boldsymbol{\theta}|\mathbf{y})$.
 
-# ### Application with the Biochemical Oxygen Demand (BOD) model
+# ### Application with the Biochemical Oxygen Demand (BOD) model from [[Sullivan et al., 2010]](https://or.water.usgs.gov/proj/keno_reach/download/chemgeo_bod_final.pdf)
 #
-# #### Definiiton
+# #### Definition
 #
 # To illustrate the process describe above, we consider the BOD inverse problem described in [[Marzouk et al., 2016]](https://arxiv.org/pdf/1602.05023.pdf).   The goal is to estimate $2$ coefficients in a time-dependent model of oxygen demand, which is used as an indication of biological activity in a water sample.
 #
@@ -106,6 +106,15 @@ def grad_x_forward_model(p1,p2,t):
 
 
 # -
+
+# One simulation of the forward model:
+
+t = np.linspace(0,10, 100)
+fig, ax = plt.subplots(1,1)
+ax.plot(t, forward_model(1, 1, t));
+ax.set_xlabel("t")
+ax.set_ylabel("BOD");
+
 
 # For this problem, as noise $\mathcal{E}$ is Gaussian and additive, the likelihood function $\pi(\mathbf{y}|\boldsymbol{\theta})$, can be decomposed for each time step as:
 # $$\pi(\mathbf{y}|\boldsymbol{\theta}) = \prod_{t}^{5} \pi(y_t|\boldsymbol{\theta}), $$
