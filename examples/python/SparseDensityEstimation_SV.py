@@ -1,24 +1,17 @@
 # ---
 # jupyter:
 #   jupytext:
-#     cell_metadata_filter: -all
-#     formats: ipynb,py
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
 #       jupytext_version: 1.14.0
-#   kernelspec:
-#     display_name: Python 3 (ipykernel)
-#     language: python
-#     name: python3
 # ---
 
-# ### Stochastic volatility 
+# + [markdown] id="UK4jDZgoYNEy"
+# # Density estimation via sparsity aware transport maps
 
-# At first we import a few common packages
-
-# +
+# + endofcell="--"
 import time
 import os
 
@@ -26,15 +19,14 @@ import numpy as np
 import scipy
 import scipy.stats
 from scipy.stats import multivariate_normal
-from pandas import MultiIndex
 import matplotlib.pyplot as plt
 # -
 
 # Now we set the number of threads to be used by `Kokkos` and import `MParT`.
 
-# +
+# # +
 os.environ['KOKKOS_NUM_THREADS'] = '8'
-from mpart import *
+import mpart as mt
 
 print('Kokkos is using', Concurrency(), 'threads')
 
@@ -43,13 +35,13 @@ print('Kokkos is using', Concurrency(), 'threads')
 T = 40 #number of time steps
 d = T+2
 
-opts = MapOptions()
-opts.basisType = BasisTypes.HermiteFunctions
+opts = mt.MapOptions()
+opts.basisType = mt.BasisTypes.HermiteFunctions
 
 
 # Let's generate some training and test samples and calculate the true log-pdf.
 
-# +
+# # +
 def generate_SV_samples(d,N):
     # Sample hyper-parameters
     sigma = 0.25
@@ -123,7 +115,7 @@ plt.plot(X[:,0:10]);
 plt.xlabel("Days (d)");
 
 
-# +
+# # +
 ### Negative log likelihood objective
 def obj(coeffs, tri_map,x):
     """ Evaluates the log-likelihood of the samples using the map-induced density. """
@@ -169,7 +161,7 @@ def compute_joint_KL(logPdfSV,logPdfTM):
     return KL
 
 
-# +
+# # +
 # Total order 1 approximation
 totalOrder = 1;
 logPdfTM = np.zeros((Ntest,))
@@ -193,7 +185,7 @@ logPdfTM_to1=logPdfTM[1:,:]
 # Compute joint KL divergence
 KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
 
-# +
+# # +
 # Total order 2 approximation
 totalOrder = 2;
 logPdfTM = np.zeros((Ntest,))
@@ -217,7 +209,7 @@ logPdfTM_to2=logPdfTM[1:,:]
 # Compute joint KL divergence
 KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 
-# +
+# # +
 # Problem specifc MultiIndexSet:
 #   - First and last 2 variables of each component (for component 1 and 3 that's for all variables) are represented by a total order 2 MultiIndexSet
 #   - Second component is computed with high order polynomial w.r.t second variable
@@ -269,7 +261,7 @@ logPdfTM_sa=logPdfTM[1:,:]
 # Compute joint KL divergence
 KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
 
-# +
+# # +
 # Compare map approximations 
 fig, ax = plt.subplots()
 ax.plot(range(1,d+1),KL_to1,'-o',label='Total order 1')
@@ -292,3 +284,4 @@ ax.set_xlabel('d')
 ax.set_ylabel('# coefficients')
 plt.legend()
 plt.show()
+# --
