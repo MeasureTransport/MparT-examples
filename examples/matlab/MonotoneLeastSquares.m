@@ -117,26 +117,36 @@ title(['Starting map error: ',num2str(error_before)])
 %% Transport map training
 %% Objective function
 % Objective function and gradient are defined at the end of the file.
+%% Optimization
 
-function [L,dwL] = objective_LS(coeffs,monotone_map,x,y_measured)
+% Optimize
+obj = @(w) objective(w,monotone_map,x,y_measured);
+w0 = monotone_map.Coeffs();
+
+options = optimoptions('fminunc','SpecifyObjectiveGradient', false, 'Display', 'none');
+[~] = fminunc(obj, w0, options);
+
+% After optimization
+map_of_x_after = monotone_map.Evaluate(x);
+error_after = objective(monotone_map.CoeffMap,monotone_map,x,y_measured);
+%% Plot final approximation
+% Unlike the true underlying model, map approximation gives a strict coninuous 
+% monotone regression of the noisy data.
+
+%matlab.internal.liveeditor.openAndConvert('MonotoneLeastSquares.mlx','MonotoneLeastSquares.m')
+%% 
+% Functions
+
+function [L,dwL] = objective(coeffs,monotone_map,x,y_measured)
 
 monotone_map.SetCoeffs(coeffs);
 map_of_x = monotone_map.Evaluate(x);
 
 %evaluate objective
-L = np.sum((map_of_x-y_measured).^2)/size(x,2);
+L = sum((map_of_x-y_measured).^2)/size(x,2);
 
 % evaluate gradient
 if (nargout > 1)
     dwL = -2 * sum(monotone_map.CoeffGrad(x,map_of_x),2)/size(x,2);
 end
 end
-%% Optimization
-
-% Optimize
-% After optimization
-%% Plot final approximation
-% Unlike the true underlying model, map approximation gives a strict coninuous 
-% monotone regression of the noisy data.
-
-%matlab.internal.liveeditor.openAndConvert('MonotoneLeastSquares.mlx','MonotoneLeastSquares.m')
