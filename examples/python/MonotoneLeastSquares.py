@@ -102,7 +102,7 @@ fixed_mset = mset.fix(True)
 
 # Set options and create map object
 opts = mt.MapOptions()
-opts.quadMinSub = 4;
+opts.quadMinSub = 4
 
 monotone_map = mt.CreateComponent(fixed_mset, opts)
 # -
@@ -114,7 +114,7 @@ monotone_map = mt.CreateComponent(fixed_mset, opts)
 map_of_x_before = monotone_map.Evaluate(x)
 error_before = np.sum((map_of_x_before - y_measured)**2)/x.shape[1]
 
-# Plot data (before and after apart)
+# Plot data and initial approximation
 plt.figure()
 plt.title('Starting map error: {:.2E}'.format(error_before))
 plt.plot(x.flatten(),y_true.flatten(),'*--',label='true data', alpha=0.8)

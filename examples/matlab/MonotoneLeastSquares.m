@@ -23,16 +23,21 @@
 % when defining an objective function that we then minimize with the BFGS optimizer 
 % implemented in |scipy.minimize|.
 %% Imports
-% First, import MParT and other packages used in this notebook. Note that it 
-% is possible to specify the number of threads used by MParT by setting the |KOKKOS_NUM_THREADS| 
-% environment variable *before* importing MParT.
+% First, import |MParT| by adding the path to the installation folder and initialize 
+% the |Kokkos| environment. Note that it is possible to specify the number of 
+% threads used by |MParT| as an argument of the |KokkosInitialize| function. The 
+% number of threads can only be set once per session.
 
 addpath(genpath('~/Installations/MParT/matlab'))
+num_threads = 8;
+KokkosInitialize(num_threads); 
+%% 
+% Default figure settings:
 
 sd = 3; rng(sd);
 
 set(0,'DefaultLineLineWidth',1.75)
-set(0,'defaultAxesFontSize',14)
+set(0,'defaultAxesFontSize',12)
 set(0,'defaultfigurecolor',[1 1 1])
 set(0, 'DefaultAxesBox', 'on');
 
@@ -80,11 +85,32 @@ title('Training data')
 %% Multi-index set
 
 % Define multi-index set
+max_order = 5;
+multis = 0:max_order;
+mset = MultiIndexSet(multis);
+fixed_mset = mset.Fix();
+
 % Set options and create map object
+opts = MapOptions;
+opts.quadMinSub = 4;
+
+monotone_map = CreateComponent(fixed_mset,opts);
 %% Plot initial approximation
 
 % Before optimization
+map_of_x_before = monotone_map.Evaluate(x);
+error_before = sum((map_of_x_before-y_measured).^2/size(x,2));
+
 % Plot data (before and after apart)
+figure
+hold on
+plot(x,y_true)
+plot(x,y_measured)
+plot(x,error_before)
+xlabel('x')
+ylabel('y')
+legend('true data','measured data','initial map output')
+title(['Starting map error: ',num2str(error_before)])
 
 % Initial map with coefficients set to zero result in the identity map.
 %% Transport map training
@@ -100,4 +126,4 @@ title('Training data')
 % Unlike the true underlying model, map approximation gives a strict coninuous 
 % monotone regression of the noisy data.
 
-matlab.internal.liveeditor.openAndConvert('MonotoneLeastSquares.mlx','MonotoneLeastSquares.m')
+%matlab.internal.liveeditor.openAndConvert('MonotoneLeastSquares.mlx','MonotoneLeastSquares.m')
