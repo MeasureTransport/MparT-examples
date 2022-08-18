@@ -32,7 +32,7 @@ addpath(genpath('~/Installations/MParT/matlab'))
 num_threads = 8;
 KokkosInitialize(num_threads);
 %% 
-% Default figure settings:
+% Default settings:
 
 sd = 3; rng(sd);
 

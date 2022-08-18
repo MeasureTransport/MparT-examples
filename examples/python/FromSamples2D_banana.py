@@ -310,7 +310,7 @@ print('==================')
 
 # After optimization testing samples are visually distributed according to the standard normal which tell us that the map has been computed accurately. Another estimation of the approximation quality is to test normality of the pushed samples. One simple way to do that is to compute first moments of the pushed test samples:
 
-# Print statistics of normalized samples (TODO replace with better Gaussianity check)
+# Print statistics of normalized samples 
 print('==================')
 mean_of_map = np.mean(r_test_after_opt,1)
 print("Mean of normalized test samples")

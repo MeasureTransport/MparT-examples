@@ -18,11 +18,11 @@ for line in file:
     else:
         if len(line) > 0:
             if line[0]=="#":
-                if line[:4]=="# +":
+                if line[:4]=="# +" or line[:4]=="# -":
                     new_line = "%%"
                     replaced_content = replaced_content + new_line + "\n"
-                elif line[:4]=="# -":
-                    pass
+                # elif line[:4]=="# -":
+                #     replaced_content = replaced_content  + "\n"
                 elif line[:4]=="# # ":
                     new_line = line.replace("# #", "%% ")
                     new_line=new_line.replace("`","|")
@@ -42,17 +42,25 @@ for line in file:
                     new_line = line.replace("# ####", "%%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
-                    replaced_content = replaced_content + new_line + "\n"                
+                    replaced_content = replaced_content + new_line + "\n"
+                elif line[:8]=="# ##### ":
+                    new_line = line.replace("# #####", "%")
+                    new_line=new_line.replace("`","|")
+                    new_line=new_line.replace("**","*")
+                    replaced_content = replaced_content + new_line + "\n"                  
                 else:
                     new_line = line.replace("#", "%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
                     replaced_content = replaced_content + new_line + "\n"
-
+            else:
+                print(line)
+                new_line = "\n"+ "% code "
+                replaced_content = replaced_content + new_line + "\n"
     #concatenate the new string and add an end-line break
 
 # Optional line for conversion 
-replaced_content = replaced_content + "matlab.internal.liveeditor.openAndConvert('MonotoneLeastSquares.mlx','MonotoneLeastSquares.m')"+"\n"
+replaced_content = replaced_content + "matlab.internal.liveeditor.openAndConvert('"+notebook_name+".mlx','"+notebook_name+".m')"+"\n"
  
    
 #close the file
