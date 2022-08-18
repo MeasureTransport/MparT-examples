@@ -1,7 +1,7 @@
 # Known issue: will translate italic to bold
 
 #open file in read mode
-notebook_name="MonotoneLeastSquares"
+notebook_name="FromSamples2D_banana"
 file = open("../python/"+notebook_name+".py", "r")
 
 replaced_content = "%%"+"\n"
