@@ -40,7 +40,6 @@ set(0,'DefaultLineLineWidth',1.75)
 set(0,'defaultAxesFontSize',12)
 set(0,'defaultfigurecolor',[1 1 1])
 set(0, 'DefaultAxesBox', 'on');
-
 %% Generate training data
 %% True model
 % Here we choose to use the step function $H(x)=\text{sgn}(x-2)+1$ as the reference 
@@ -104,8 +103,8 @@ error_before = sum((map_of_x_before-y_measured).^2/size(x,2));
 % Plot data and initial approximation
 figure
 hold on
-plot(x,y_true)
 plot(x,y_measured,':*','Color',[0.9290 0.6940 0.1250],'MarkerSize',5)
+plot(x,y_true,'Color',[0 0.4470 0.7410])
 plot(x,map_of_x_before,'Color','r')
 xlabel('x')
 ylabel('y')
@@ -130,14 +129,23 @@ options = optimoptions('fminunc','SpecifyObjectiveGradient', false, 'Display', '
 map_of_x_after = monotone_map.Evaluate(x);
 error_after = objective(monotone_map.CoeffMap,monotone_map,x,y_measured);
 %% Plot final approximation
+
+figure
+hold on
+plot(x,y_measured,':*','Color',[0.9290 0.6940 0.1250],'MarkerSize',5)
+plot(x,y_true,'Color',[0 0.4470 0.7410])
+plot(x,map_of_x_after,'Color','r')
+xlabel('x')
+ylabel('y')
+legend('true data','measured data','final map output')
+title(['Final map error: ',num2str(error_before)])
+%% 
 % Unlike the true underlying model, map approximation gives a strict coninuous 
 % monotone regression of the noisy data.
-
-%matlab.internal.liveeditor.openAndConvert('MonotoneLeastSquares.mlx','MonotoneLeastSquares.m')
-%% 
-% Functions
+%% Custom functions for this example
 
 function [L,dwL] = objective(coeffs,monotone_map,x,y_measured)
+%% Least squares objective and gradient
 
 monotone_map.SetCoeffs(coeffs);
 map_of_x = monotone_map.Evaluate(x);

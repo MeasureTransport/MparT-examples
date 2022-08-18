@@ -18,8 +18,8 @@ for line in file:
     else:
         if len(line) > 0:
             if line[0]=="#":
-                if line[:4]=="# +" or line[:4]=="# -":
-                    new_line = ""
+                if line[:4]=="# +":
+                    new_line = "%%"
                     replaced_content = replaced_content + new_line + "\n"
                 elif line[:4]=="# -":
                     pass
