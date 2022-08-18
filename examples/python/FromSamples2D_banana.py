@@ -239,7 +239,7 @@ plt.ylabel('$r_2$')
 plt.show()
 
 
-# Print initial coeffs and objective
+# Print initial coeffs and objective values
 print('==================')
 print('Starting coeffs component 1:')
 print(S1.CoeffMap())

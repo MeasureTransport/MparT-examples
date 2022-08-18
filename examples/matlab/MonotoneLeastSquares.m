@@ -142,7 +142,7 @@ title(['Final map error: ',num2str(error_before)])
 %% 
 % Unlike the true underlying model, map approximation gives a strict coninuous 
 % monotone regression of the noisy data.
-%% Custom functions for this example
+%% Custom functions needed for this example
 
 function [L,dwL] = objective(coeffs,monotone_map,x,y_measured)
 %% Least squares objective and gradient
