@@ -30,7 +30,7 @@
 
 addpath(genpath('~/Installations/MParT/matlab'))
 num_threads = 8;
-KokkosInitialize(num_threads); 
+KokkosInitialize(num_threads);
 %% 
 % Default figure settings:
 
@@ -73,7 +73,7 @@ y_measured = y_true + y_noise;
 
 figure
 hold on
-plot(x,y_measured,':*','Color',[0.8500 0.3250 0.0980,0.4],'MarkerSize',5)
+plot(x,y_measured,':*','Color',[0.9290 0.6940 0.1250],'MarkerSize',5)
 xlabel('x')
 ylabel('y')
 title('Training data')
@@ -87,7 +87,7 @@ title('Training data')
 % Define multi-index set
 max_order = 5;
 multis = 0:max_order;
-mset = MultiIndexSet(multis);
+mset = MultiIndexSet(multis');
 fixed_mset = mset.Fix();
 
 % Set options and create map object
@@ -101,23 +101,36 @@ monotone_map = CreateComponent(fixed_mset,opts);
 map_of_x_before = monotone_map.Evaluate(x);
 error_before = sum((map_of_x_before-y_measured).^2/size(x,2));
 
-% Plot data (before and after apart)
+% Plot data and initial approximation
 figure
 hold on
 plot(x,y_true)
-plot(x,y_measured)
-plot(x,error_before)
+plot(x,y_measured,':*','Color',[0.9290 0.6940 0.1250],'MarkerSize',5)
+plot(x,map_of_x_before,'Color','r')
 xlabel('x')
 ylabel('y')
 legend('true data','measured data','initial map output')
 title(['Starting map error: ',num2str(error_before)])
 
+%% 
 % Initial map with coefficients set to zero result in the identity map.
 %% Transport map training
 %% Objective function
+% Objective function and gradient are defined at the end of the file.
 
-% Least squares objective
-% Gradient of objective
+function [L,dwL] = objective_LS(coeffs,monotone_map,x,y_measured)
+
+monotone_map.SetCoeffs(coeffs);
+map_of_x = monotone_map.Evaluate(x);
+
+%evaluate objective
+L = np.sum((map_of_x-y_measured).^2)/size(x,2);
+
+% evaluate gradient
+if (nargout > 1)
+    dwL = -2 * sum(monotone_map.CoeffGrad(x,map_of_x),2)/size(x,2);
+end
+end
 %% Optimization
 
 % Optimize
