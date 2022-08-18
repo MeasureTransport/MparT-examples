@@ -1,20 +1,22 @@
 # ---
 # jupyter:
 #   jupytext:
+#     formats: ipynb,py
 #     text_representation:
 #       extension: .py
 #       format_name: light
 #       format_version: '1.5'
 #       jupytext_version: 1.14.0
+#   kernelspec:
+#     display_name: Python 3 (ipykernel)
+#     language: python
+#     name: python3
 # ---
 
-# + [markdown] id="UK4jDZgoYNEy"
 # # Density estimation with sparse transport maps
 
-# + [markdown] id="dJjmXwhl5ycX"
 # In this example we demonstrate how MParT can be use to build map with certain sparse structure in order to characterize high dimensional densities with conditional independence.
 
-# + [markdown] id="-M-J-1Ip9GI6"
 # ## Imports
 # First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 
@@ -33,10 +35,10 @@ print('Kokkos is using', mt.Concurrency(), 'threads')
 plt.rcParams['figure.dpi'] = 110
 
 
-# + [markdown] id="j5q6kiOc89hO"
+# -
+
 # ## Stochastic volatility model
 
-# + [markdown] id="q_jbx-vw_Jyj"
 # ### Problem description
 #
 # The problem considered here is a Markov process that describes the volatility on a financial asset overt time. The model depends on two hyperparamters $\mu$ and $\phi$ and state variable $Z_k$ represents log-volatility at times $k=1,...,T$. The log-volatility follows the order-one autoregressive process:
@@ -50,21 +52,17 @@ plt.rcParams['figure.dpi'] = 110
 # $$\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T), $$
 # with $T$ being arbitrarly large. 
 
-# + [markdown] id="3_fpCC6onGoX"
 # The conditional independence property for this problem reads
 #
 # $$ \pi(\mathbf{x}_t|\mathbf{x}_{<t}) = \pi(\mathbf{x}_t|\mathbf{x}_{t-1},\mu,\phi)$$
 #
 # More details about this problem can be found in [[Baptista et al., 2022]](https://arxiv.org/pdf/2009.10303.pdf).
 
-# + [markdown] id="l-ptbM85KhPr"
 # ### Sampling
 #
 #
 
-# + [markdown] id="pzXh-4UMK_2P"
 # Drawing samples $(\mu^i,\phi^i,x_0^i,x_1^i,...,x_T^i)$ can be performed by the following function
-# -
 
 def generate_SV_samples(d,N):
     # Sample hyper-parameters
@@ -86,14 +84,11 @@ def generate_SV_samples(d,N):
     return X
 
 
-# + [markdown] id="Uo8WUYnKp0Q7"
 # Set dimension of the problem:
-# -
 
 T = 40 #number of time steps including initial condition
 d = T+2
 
-# + [markdown] id="V3N7CiDbperf"
 # Few realizations of the process look like
 
 # +
@@ -105,10 +100,9 @@ Zvisu = Xvisu[2:,:]
 plt.figure()
 plt.plot(Xvisu);
 plt.xlabel("Days (d)");
-
-# + [markdown] id="zWuJ0dpbqYTC"
-# And corresponding realization of hyperparameters
 # -
+
+# And corresponding realization of hyperparameters
 
 hyper_params = Xvisu[:2,:]
 plt.figure()
@@ -119,13 +113,10 @@ plt.legend()
 plt.show()
 
 
-# + [markdown] id="F0grplKrri4S"
 # ### Probability density function
 #
 
-# + [markdown] id="k81EnLHyrqTo"
 # The exact log-conditional densities used to define joint density $\pi(\mathbf{x}_T)$ are defined by the following function:
-# -
 
 def SV_log_pdf(X):
     
@@ -168,21 +159,16 @@ def SV_log_pdf(X):
     return logPdf
 
 
-# + [markdown] id="nfecF3RTuh1P"
 # ## Transport map training
 
-# + [markdown] id="7XYflgO7ygGY"
 # In the following we optimize each map component $S_k$, $k \in \{1,...,T+2\}$:
 
-# + [markdown] id="F4UYJhdkzj6b"
 # * For $k=1$, map $S_1$ characterize marginal density $\pi(\mu)$
 # * For $k=2$, map $S_2$ characterize conditional density $\pi(\phi|\mu)$
 # * For $k=3$, map $S_3$ characterize conditional density $\pi(z_0|\phi,\mu)$
 # * For $k>3$, map $S_k$ characterize conditional density $\pi(z_{k-2}|z_{k-3},\phi,\mu)$
 
-# + [markdown] id="1bAkmdgJ1pwW"
 # Definition of log-conditional density from map component $S_k$
-# -
 
 def log_cond_pullback_pdf(triMap,eta,x):
     r = triMap.Evaluate(x)
@@ -190,10 +176,8 @@ def log_cond_pullback_pdf(triMap,eta,x):
     return log_pdf
 
 
-# + [markdown] id="b31RjgM8vA21"
 # ### Generating training and testing samples
 
-# + [markdown] id="uB4bPc9eunR6"
 # From training samples generated with the known function we compare accuracy of the transport map induced density using different parameterization and a limited number of training samples.
 
 # +
@@ -204,20 +188,18 @@ Ntest = 5000 # Number of testing samples
 Xtest = generate_SV_samples(d,Ntest)
 
 
-# + [markdown] id="_uzZrxbjwp-p"
+# -
+
 # ### Objective function and gradient
 
-# + [markdown] id="CcEy09YMw2V7"
 # We use the minimization of negative log-likelihood to optimize map components.
 
-# + [markdown] id="4gTKOcAjxRYR"
 # For map component $k$, the objective function is given by 
 #
 # $$
 # J_k(\mathbf{w}_k) = - \frac{1}{N}\sum_{i=1}^N \left( \log\eta\left(S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right) + \log \frac{\partial S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial x_k}\right)
 # $$
 
-# + [markdown] id="EOvAc9SIxTeP"
 # and corresponding gradient
 # $$
 # \nabla_{\mathbf{w}_k}J_k(\mathbf{w}_k) = - \frac{1}{N}\sum_{i=1}^N \left(\left[\nabla_{\mathbf{w}_k}S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right]^T \nabla_\mathbf{r}\log \eta \left(S_k
@@ -258,17 +240,15 @@ def grad_obj(coeffs, tri_map, x):
     return -np.sum(grad_rho_of_map_of_x + grad_log_det, 1)/num_points
 
 
-# + [markdown] id="u0JQYqd6xwCR"
+# -
+
 # ### Training total order 1 map
 
-# + [markdown] id="bTNK5SNq08Ej"
 # Here we use a total order 1 multivariate expansion to parameterize each component $S_k$, $k \in \{1,...,T+2\}$.
-# -
 
 opts = mt.MapOptions()
 opts.basisType = mt.BasisTypes.HermiteFunctions 
 
-# + [markdown] id="CvdioRau3XAr"
 # #### Optimization
 
 # +
@@ -294,9 +274,9 @@ for dk in tqdm(range(1,d+1),desc="Map component"):
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,eta,Xtestk)))
 
 logPdfTM_to1=logPdfTM[1:,:]
+# -
 
 
-# + [markdown] id="LvNBKvx62ni6"
 # #### Compute KL divergence error
 #
 # Since we know what the true is for problem we can compute the KL divergence $D_{KL}(\pi(\mathbf{x}_t)||S^\sharp \eta)$ between the map-induced density and the true density.
@@ -312,14 +292,12 @@ def compute_joint_KL(logPdfSV,logPdfTM):
 
 # Compute joint KL divergence for total order 1 approximation
 KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
+# -
 
-# + [markdown] id="2LZMEkKP3buP"
 # ### Training total order 2 map
 
-# + [markdown] id="8XCi_k4y3-nh"
 # Here we use a total order 2 multivariate expansion to parameterize each component $S_k$, $k \in \{1,...,T+2\}$.
 
-# + [markdown] id="seev6_Fg4WL5"
 # #### Optimization
 #
 # This step can take quite a long time depending of the number of time steps
@@ -347,25 +325,20 @@ for dk in tqdm(range(1,d+1),desc="Map component"):
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,eta,Xtestk)))
 
 logPdfTM_to2=logPdfTM[1:,:]
-
-
-# + [markdown] id="EhyDk50c4VHr"
-# #### Compute KL divergence error
 # -
+
+
+# #### Compute KL divergence error
 
 # Compute joint KL divergence for total order 2 approximation
 KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 
-# + [markdown] id="Oey4aiyM4q6I"
 # ### Training sparse map
 
-# + [markdown] id="sXsCZxC94xbK"
 # Here we use the prior knowledge of the conditional independence property of the target density $\pi(\mathbf{x}_T)$ to parameterize map components with a map structure.
 
-# + [markdown] id="4paQiiRL-RfW"
 # #### Prior knowledge used to parameterize map components
 
-# + [markdown] id="z6iq1wFU5UEW"
 # From the independence structure mentionned in the problem formulation we have:
 #
 #
@@ -374,7 +347,6 @@ KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 #
 #
 
-# + [markdown] id="3Ga4caTs8Gvu"
 # Complexity of map component can also be deducted from problem formulation:
 #
 #
@@ -385,7 +357,6 @@ KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 #
 #
 
-# + [markdown] id="dWbkOtyA_vDz"
 # Hence multi-index sets used for this problem are:
 #
 #
@@ -396,7 +367,6 @@ KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 #
 #
 
-# + [markdown] id="NHy0d80v-f61"
 # #### Optimization
 
 # +
@@ -443,20 +413,16 @@ for dk in tqdm(range(1,d+1),desc="Map component"):
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
     logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
 logPdfTM_sa=logPdfTM[1:,:]
-
-# + [markdown] id="KC9spVVxB9iV"
-# #### Compute KL divergence error
 # -
+
+# #### Compute KL divergence error
 
 # Compute joint KL divergence
 KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
 
-# + [markdown] id="mnvo24bVCFs6"
 # ## Compare approximations
 
-# + [markdown] id="ikaECsqkCLOi"
 # ### KL divergence
-# -
 
 # Compare map approximations 
 fig, ax = plt.subplots()
@@ -469,17 +435,13 @@ ax.set_ylabel('$D_{KL}(\pi(\mathbf{x}_t)||S^\sharp \eta)$')
 plt.legend()
 plt.show()
 
-# + [markdown] id="kY4MM1QyDB8C"
 # Usually increasing map complexity will improve map approximation. However when the number of parameters increases too much compared to the number of samples, computed map overfits the data which lead to worst approximation. This overfitting can be seen in this examples when looking at the total order 2 approximation that slowly loses accuracy when the dimension increases. Total order 2 approximation while performing better than order 1 for low dimension perform worst when dimension is greater than ~27. approximation thatn total order 1 with dimension greater than 27.
 #
 # Using sparse multi-index sets help reduces the increase of parameters when the dimension increases leading to better approximation for all dimensions.
 
-# + [markdown] id="-I6-fheDCQkc"
 # ### Map coefficients
 
-# + [markdown] id="QL-g57KVevEO"
 # To complement observations made above, we visualize the number of parameters (polyniomal coefficients) for each map parameterization.
-# -
 
 fig, ax =plt.subplots()
 ax.plot(range(1,d+1),ListCoeffs_to1,'-o',label='Total order 1')
@@ -490,8 +452,6 @@ ax.set_ylabel('# coefficients')
 plt.legend()
 plt.show()
 
-# + [markdown] id="g3t2RU6qfJHe"
 # We can observe the exponential growth of the number coefficients for the total order 2 approximation. Chosen sparse multi-index sets have a fixed number of parameters which become smaller than the number of parameters of the total order 1 approximation when dimension is about 15. 
 
-# + [markdown] id="ISjr27_zgr_O"
 # Using less parameters help error scaling with the number of dimension but also computation time for the optimization and the computation time when evaluating the transport map. 
