@@ -49,7 +49,7 @@ plt.rcParams['figure.dpi'] = 110
 #
 # ### True model
 #
-# Here we choose to use the step function $H(x)=\text{sgn}(x-2)+1$ as the reference monotone function. It is worth noting that this function is not strictly monotone and piecewise continuous.
+# Here we choose to use the step function $H(x)=\text{sgn}(x-2)+1$ as the reference monotone function. It is worth noting that this function is not strictly monotone and is only piecewise continuous.
 
 # +
 # variation interval

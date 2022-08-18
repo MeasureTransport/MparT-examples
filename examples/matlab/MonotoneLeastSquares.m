@@ -34,6 +34,7 @@ sd = 3; rng(sd);
 set(0,'DefaultLineLineWidth',1.75)
 set(0,'defaultAxesFontSize',14)
 set(0,'defaultfigurecolor',[1 1 1])
+set(0, 'DefaultAxesBox', 'on');
 
 %% Generate training data
 %% True model
@@ -50,19 +51,28 @@ x = linspace(xmin,xmax,num_points);
 y_true = 2*(x>2);
 
 figure
-title('Reference data')
 plot(x,y_true)
 xlabel('x')
 ylabel('H(x)')
 ylim([-0.1,2.1])
+title('Reference data')
+
 %% Training data
 % Training data $y^i$ in the objective defined above are simulated by pertubating 
 % the reference data with a white Gaussian noise with a $0.4$ standard deviation.
 
-noisesd = 0.4
+noisesd = 0.4;
 
-y_noise = noisesd*randn(1,num_points)
-y_measured = y_true + y_noise
+y_noise = noisesd*randn(1,num_points);
+y_measured = y_true + y_noise;
+
+figure
+hold on
+plot(x,y_measured,':*','Color',[0.8500 0.3250 0.0980,0.4],'MarkerSize',5)
+xlabel('x')
+ylabel('y')
+title('Training data')
+
 %% Map initialization
 % We use the previously generated data to train the 1D transport map. In 1D, 
 % the map complexity can be set via the list of multi-indices. Here, map complexity 
