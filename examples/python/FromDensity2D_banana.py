@@ -253,7 +253,7 @@ ref_distribution = multivariate_normal(np.zeros(2),np.eye(2));
 # Compute variance diagnostic
 var_diag = variance_diagnostic(transport_map,ref_distribution,target_logpdf,test_z)
 
-# Print final coeffs and objective
+# Print variance diagnostic
 print('==================')
 print('Variance diagnostic: {:.2E}'.format(var_diag))
 print('==================')
