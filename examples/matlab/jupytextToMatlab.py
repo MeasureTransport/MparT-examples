@@ -1,7 +1,7 @@
 # Known issue: will translate italic to bold
 
 #open file in read mode
-notebook_name="FromDensity2D_banana"
+notebook_name="BayesianInference_BOD"
 file = open("../python/"+notebook_name+".py", "r")
 
 replaced_content = "%%"+"\n"
@@ -28,36 +28,42 @@ for line in file:
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
                     new_line=new_line.replace("\sharp","*")
+                    new_line=new_line.replace("boldsymbol","mathbf")
                     replaced_content = replaced_content + new_line + "\n"
                 elif line[:5]=="# ## ":
                     new_line = line.replace("# ##", "%% ")
                     new_line=new_line.replace("`","|")                    
                     new_line=new_line.replace("**","*")
                     new_line=new_line.replace("\sharp","*")
+                    new_line=new_line.replace("boldsymbol","mathbf")
                     replaced_content = replaced_content + new_line + "\n"                
                 elif line[:6]=="# ### ":
                     new_line = line.replace("# ###", "%%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
                     new_line=new_line.replace("\sharp","*")
+                    new_line=new_line.replace("boldsymbol","mathbf")
                     replaced_content = replaced_content + new_line + "\n"
                 elif line[:7]=="# #### ":
                     new_line = line.replace("# ####", "%%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
                     new_line=new_line.replace("\sharp","*")
+                    new_line=new_line.replace("boldsymbol","mathbf")
                     replaced_content = replaced_content + new_line + "\n"
                 elif line[:8]=="# ##### ":
                     new_line = line.replace("# #####", "%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
                     new_line=new_line.replace("\sharp","*")
+                    new_line=new_line.replace("boldsymbol","mathbf")
                     replaced_content = replaced_content + new_line + "\n"                  
                 else:
                     new_line = line.replace("#", "%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
                     new_line=new_line.replace("\sharp","*")
+                    new_line=new_line.replace("boldsymbol","mathbf")
                     replaced_content = replaced_content + new_line + "\n"
             else:
                 new_line = "\n"+ "% code "

@@ -106,7 +106,7 @@ plot(x,y_true,'Color',[0 0.4470 0.7410])
 plot(x,map_of_x_before,'Color','r')
 xlabel('x')
 ylabel('y')
-legend('true data','measured data','initial map output')
+legend('measured data','true data','initial map output')
 title(['Starting map error: ',num2str(error_before)])
 %% 
 % Initial map with coefficients set to zero result in the identity map.
@@ -134,7 +134,7 @@ plot(x,y_true,'Color',[0 0.4470 0.7410])
 plot(x,map_of_x_after,'Color','r')
 xlabel('x')
 ylabel('y')
-legend('true data','measured data','final map output')
+legend('measured data','true data','final map output')
 title(['Final map error: ',num2str(error_before)])
 %% 
 % Unlike the true underlying model, map approximation gives a strict coninuous 
