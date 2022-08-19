@@ -206,13 +206,7 @@ contour(xx1,xx2,reshape(map_approx_grid,ngrid,ngrid),'LineStyle','--')
 xlabel('x_1')
 ylabel('x_2')
 legend('Unnormalized target','TM approximation')
-%%
-x_eval = linspace(-4,4,10);
-xx_eval = [x_eval;x_eval];
 
-
-%matlab.internal.liveeditor.openAndConvert('FromDensity2D_banana.mlx','FromDensity2D_banana.m')
-[L,dWL] = objective(ones(1,9),transport_map,xx_eval);
 %% Custom functions needed for this example
 
 function logpdf = target_logpdf(x)
@@ -255,8 +249,9 @@ function var = variance_diagonostic(tri_map,x)
     expect = mean(diff);
     var = 0.5*mean((diff-expect).^2);
 end
-% pushforward density
+
 function pdf=push_forward_pdf(tri_map,x)
+    % pushforward density
     xinv = tri_map.Inverse(x,x);
     log_det_grad_x_inverse = - tri_map.LogDeterminant(xinv);
     log_pdf = log(mvnpdf(xinv'))+log_det_grad_x_inverse;
