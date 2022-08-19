@@ -208,8 +208,6 @@ contour(X,Y,Z2,'LineStyle','--')
 xlabel('\theta_1')
 ylabel('\theta_2')
 legend('Unnormalized posterior','TM approximation')
-%% 
-% 
 %% Variance diagnostic
 % A commonly used accuracy check when facing computation maps from density is 
 % the so-called variance diagnostic defined as:
@@ -263,7 +261,6 @@ axis('equal')
 X_mean = mean(Xpost,2);
 disp('Mean a posteriori: ')
 disp((X_mean))
-
 %% 
 % Samples can also be used to study parameters marginals. Here are the one-dimensional 
 % marginals histograms:
@@ -277,7 +274,6 @@ subplot(1,2,2)
 histogram(Xpost(2,:),'Normalization','pdf')
 xlabel('\theta_2')
 ylabel('$\tilde{\pi}(\theta_2)$','Interpreter','Latex')
-matlab.internal.liveeditor.openAndConvert('BayesianInference_BOD.mlx','BayesianInference_BOD.m')
 %% Custom functions needed for this example
 
 function out=forward_model(p1,p2,t)
