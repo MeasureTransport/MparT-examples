@@ -75,7 +75,7 @@ def target_logpdf(x):
   logpdf = logpdf1 + logpdf2
   return logpdf
 
-# Gride for plotting
+# Grid for plotting
 ngrid=100
 x1_t = np.linspace(-3,3,ngrid)
 x2_t = np.linspace(-3,7.5,ngrid)
@@ -83,8 +83,7 @@ xx1,xx2 = np.meshgrid(x1_t,x2_t)
 
 xx = np.vstack((xx1.reshape(1,-1),xx2.reshape(1,-1)))
 
-# For plotting and computing densities
-
+# Target contours
 target_pdf_at_grid = np.exp(target_logpdf(xx))
 
 fig, ax = plt.subplots()
@@ -119,6 +118,7 @@ plt.show()
 # +
 # KL divergence objective
 def obj(coeffs, transport_map, x):
+    num_points = x.shape[1]
     transport_map.SetCoeffs(coeffs)
     map_of_x = transport_map.Evaluate(x)
     logpdf= target_logpdf(map_of_x)
@@ -133,6 +133,7 @@ def target_grad_logpdf(x):
 
 # Gradient of KL divergence objective
 def grad_obj(coeffs, transport_map, x):
+    num_points = x.shape[1]
     transport_map.SetCoeffs(coeffs)
     map_of_x = transport_map.Evaluate(x)
     sens_vecs = target_grad_logpdf(map_of_x)
