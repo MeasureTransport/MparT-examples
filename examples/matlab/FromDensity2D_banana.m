@@ -6,16 +6,16 @@
 % We consider $T(\mathbf{z};\mathbf{w})$ a monotone triangular transport map 
 % parameterized by $\mathbf{w}$ (e.g., polynomial coefficients). This map which 
 % is invertible and has an invertible Jacobian for any parameter $\mathbf{w}$, 
-% transports samples $\mathbf{z}^i$ from the reference density $\eta$ to samples 
+% transports samples $\mathbf{z}^i$ from the reference density $\eta$ to samples  
 % $T(\mathbf{z}^i;\mathbf{w})$ from the map induced density $\tilde{\pi}_\mathbf{w}(\mathbf{z})$ 
-% defined as: $$ \tilde{\pi}_\mathbf{w}(\mathbf{z}) = \eta(T^{-1}(\mathbf{z};\mathbf{w}))|\text{det 
+% defined as: $$ \tilde{\pi}_\mathbf{w}(\mathbf{z}) = \eta(T^{-1}(\mathbf{z};\mathbf{w}))|\text{det  
 % } T^{-1}(\mathbf{z};\mathbf{w})|,$$ where $\text{det } T^{-1}$ is the determinant 
 % of the inverse map Jacobian at the point $\mathbf{z}$. We refer to $\tilde{\pi}_{\mathbf{w}}(\mathbf{x})$ 
 % as the *map-induced* density or *pushforward distribution* and will commonly 
-% interchange notation for densities and measures to use the notation $\tilde{\pi} 
+% interchange notation for densities and measures to use the notation $\tilde{\pi}  
 % = T_{*} \eta$.
 % 
-% The objective of this example is, knowing some unnormalized target density 
+% The objective of this example is, knowing some unnormalized target density  
 % $\bar{\pi}$, find the map $T$ that transport samples drawn from $\eta$ to samples 
 % drawn from the target $\pi$.
 %% Imports
@@ -41,12 +41,13 @@ set(0, 'DefaultAxesBox', 'on');
 % the unnormalized probability density, samples and the exact transport map are 
 % known.
 % 
-% The banana density is defined as: $$ \pi(x_1,x_2) \propto N_1(x_1)\times N_1(x_2-x_1^2) 
+% The banana density is defined as: $$ \pi(x_1,x_2) \propto N_1(x_1)\times N_1(x_2-x_1^2)  
 % $$ where $N_1$ is the 1D standard normal density.
 % 
 % The exact transport map that transport the 2D standard normal density to $\pi$ 
-% is known as: $$$ {T}^\text{true}(z_1,z_2)= \left[ \matrix{z_1 \cr z_2 + z_1^2 
-% } \right]$$$ 
+% is known as: $$$
+% 
+% $${T}^\text{true}(z_1,z_2)= \left[ \matrix{z_1 \cr z_2 + z_1^2 } \right]$$
 % 
 % Contours of the target density can be visualized as:
 
@@ -74,7 +75,7 @@ legend('target density')
 % that is a good approximation of the target $\pi$.
 % 
 % In order to characterize this posterior density, one method is to build a 
-% monotone triangular transport map $T$ such that the KL divergence $D_{KL}(\eta 
+% monotone triangular transport map $T$ such that the KL divergence $D_{KL}(\eta  
 % || T^* \pi)$ is minmized. If $T$ is map parameterized by $\mathbf{w}$, the objective 
 % function derived from the discrete KL divergence reads:
 % 
@@ -86,9 +87,9 @@ legend('target density')
 % to the target density $\pi(\mathbf{z})$. The gradient of this objective function 
 % reads
 % 
-% $$ \nabla_\mathbf{w} J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \nabla_\mathbf{w} 
-% T(\mathbf{z}^i;\mathbf{w}).\nabla_\mathbf{x}\log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) 
-% + \nabla_{\mathbf{w}}\log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), 
+% $$ \nabla_\mathbf{w} J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \nabla_\mathbf{w}  
+% T(\mathbf{z}^i;\mathbf{w}).\nabla_\mathbf{x}\log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right)  
+% + \nabla_{\mathbf{w}}\log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right),  
 % \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d). $$ The objective 
 % function and gradient are defined at the end of the script.
 %% Map parameterization
@@ -142,7 +143,7 @@ disp('==================')
 disp('==================')
 
 % Optimize
-obj = @(w) objective(w,transport_map,x);
+obj = @(w) objective(w,transport_map,z);
 w0 = transport_map.Coeffs();
 
 options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
@@ -168,6 +169,8 @@ figure
 hold on
 contour(xx1,xx2,reshape(target_pdf_at_grid,ngrid,ngrid))
 scatter(x(1,:),x(2,:),'MarkerFaceColor',[0 0.4470 0.7410],'MarkerEdgeColor','none','MarkerFaceAlpha',0.1);
+xlabel('x_1')
+ylabel('x_2')
 legend('Unnormalizerd target','Pushed samples')
 %% 
 % After optimization, pushed samples $T(z^i)$, $z^i \sim \mathcal{N}(0,I)$ are 
@@ -176,10 +179,10 @@ legend('Unnormalizerd target','Pushed samples')
 % A commonly used accuracy check when facing computation maps from density is 
 % the so-called variance diagnostic defined as:
 % 
-% $$$ \epsilon_\sigma = \frac{1}{2} \mathbb{V}\text{ar}_\rho \left[ \log \frac{\rho}{T^* 
-% \bar{\pi}} \right] $$$ 
+% $$$$$$$\epsilon_\sigma = \frac{1}{2} \mathbb{V}\text{ar}_\rho \left[ \log 
+% \frac{\rho}{T^* \bar{\pi}} \right]$$
 % 
-% This diagnostic is asymptotically equivalent to the minimized KL divergence 
+% This diagnostic is asymptotically equivalent to the minimized KL divergence  
 % $D_{KL}(\eta || T^* \pi)$ and should converge to zero when the computed map 
 % converge to the true map. 
 
@@ -210,7 +213,6 @@ xx_eval = [x_eval;x_eval];
 
 %matlab.internal.liveeditor.openAndConvert('FromDensity2D_banana.mlx','FromDensity2D_banana.m')
 [L,dWL] = objective(ones(1,9),transport_map,xx_eval);
-
 %% Custom functions needed for this example
 
 function logpdf = target_logpdf(x)
@@ -220,18 +222,12 @@ y2 = (x(2,:)-x(1,:).^2);
 logpdf2 = -0.5*log(2*pi)-0.5*y2.^2;
 logpdf = logpdf1 + logpdf2;
 end
-%% 
-% 
-
 % Gradient of unnomalized target density required for gradient objective
 function grad_logpdf = target_grad_logpdf(x)
   grad1 = -x(1,:) + (2*x(1,:).*(x(2,:)-x(1,:).^2));
   grad2 = (x(1,:).^2-x(2,:));
   grad_logpdf = [grad1;grad2];
 end
-%% 
-% 
-
 function [L,dwL]=objective(coeffs,transport_map,x)
 % KL divergence objective
 num_points = size(x,2);
@@ -250,9 +246,6 @@ if (nargout > 1)
     dwL = - sum(grad_logpdf + grad_log_det,2)/num_points;
 end
 end
-%% 
-% 
-
 % variance diagnostic
 function var = variance_diagonostic(tri_map,x)
     ref_logpdf = log(mvnpdf(x'));
@@ -262,9 +255,6 @@ function var = variance_diagonostic(tri_map,x)
     expect = mean(diff);
     var = 0.5*mean((diff-expect).^2);
 end
-%% 
-% 
-
 % pushforward density
 function pdf=push_forward_pdf(tri_map,x)
     xinv = tri_map.Inverse(x,x);
