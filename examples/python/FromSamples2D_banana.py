@@ -275,17 +275,12 @@ res = minimize(obj, S2.CoeffMap(), args=(S2, x), jac=grad_obj, method='BFGS', op
 #
 #
 
-# Building triangular map from components:
-
-transport_map = mt.TriangularMap((S1,S2))
-transport_map.SetCoeffs(np.concatenate((S1.CoeffMap(),S2.CoeffMap())))
-
-# Transport of testing samples from target:
+# Coefficients of `transport_map` are now updated, let's transport testing samples again:
 
 r_test_after_opt = transport_map.Evaluate(test_x)
 
 # +
-# Before optimization plot
+# After optimization plot
 plt.figure()
 plt.title('After optimization')
 plt.contour(*grid, ref_pdf_at_grid)

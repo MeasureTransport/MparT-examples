@@ -60,7 +60,6 @@ xlabel('x')
 ylabel('H(x)')
 ylim([-0.1,2.1])
 title('Reference data')
-
 %% Training data
 % Training data $y^i$ in the objective defined above are simulated by pertubating 
 % the reference data with a white Gaussian noise with a $0.4$ standard deviation.
@@ -76,7 +75,6 @@ plot(x,y_measured,':*','Color',[0.9290 0.6940 0.1250],'MarkerSize',5)
 xlabel('x')
 ylabel('y')
 title('Training data')
-
 %% Map initialization
 % We use the previously generated data to train the 1D transport map. In 1D, 
 % the map complexity can be set via the list of multi-indices. Here, map complexity 
@@ -110,7 +108,6 @@ xlabel('x')
 ylabel('y')
 legend('true data','measured data','initial map output')
 title(['Starting map error: ',num2str(error_before)])
-
 %% 
 % Initial map with coefficients set to zero result in the identity map.
 %% Transport map training
@@ -122,7 +119,7 @@ title(['Starting map error: ',num2str(error_before)])
 obj = @(w) objective(w,monotone_map,x,y_measured);
 w0 = monotone_map.Coeffs();
 
-options = optimoptions('fminunc','SpecifyObjectiveGradient', false, 'Display', 'none');
+options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
 [~] = fminunc(obj, w0, options);
 
 % After optimization
@@ -145,8 +142,7 @@ title(['Final map error: ',num2str(error_before)])
 %% Custom functions needed for this example
 
 function [L,dwL] = objective(coeffs,monotone_map,x,y_measured)
-%% Least squares objective and gradient
-
+%Least squares objective and gradient
 monotone_map.SetCoeffs(coeffs);
 map_of_x = monotone_map.Evaluate(x);
 
@@ -155,6 +151,6 @@ L = sum((map_of_x-y_measured).^2)/size(x,2);
 
 % evaluate gradient
 if (nargout > 1)
-    dwL = -2 * sum(monotone_map.CoeffGrad(x,map_of_x),2)/size(x,2);
+    dwL = 2 * sum(monotone_map.CoeffGrad(x,map_of_x-y_measured),2)./size(x,2);
 end
 end

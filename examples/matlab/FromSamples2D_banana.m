@@ -112,10 +112,6 @@ legend('Target samples')
 % \eta \left(S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right) = -S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)$.
 % 
 % Objective function and its gradient are defined at the end of this script.
-
-
-%% 
-% 
 %% Map parameterization
 % With the separability property of the objective function mentionned above 
 % we can parameterize and optimize components $S_1$ and $S_2$ independently.
@@ -123,305 +119,206 @@ legend('Target samples')
 % Theoritically the first component is $S_1^{\text{true}}(x_1)=x_1$. This parameterization 
 % can be set with MParT as:
 
-% code 
-
-% code 
-
-% code 
+multis1 = [0;1];
+mset1 = MultiIndexSet(multis1);
+fixed_mset1 = mset1.Fix();
+%% 
 % Let's define the first component:
-%% 
+
 % Set-up first component and initialize map coefficients
+map_options1 = MapOptions;
 
-% code 
 % Create map component
-
-% code
-%% 
-% 
+S1 = CreateComponent(fixed_mset1,map_options1);
 %% Second component $S_2$
 % Theoritically the second component is $S_2^{\text{true}}(x_1,x_2)=x_2^2-x_1$. 
 % The corresponding multi-index set can exactly be define as:
 
-% code 
+multis2_true = [0 1;2 0];
+mset2_true = MultiIndexSet(multis2_true);
+fixed_mset2_true = mset2_true.Fix(); 
+%% 
+% Other multi-index sets which include the true multi-index set are any total 
+% order expansion of order greater than one:
 
-% code 
-
-% code 
-% Other multi-index sets which include the true multi-index set are any total order expansion of order greater than one:
-
-% code 
-
-% code 
-% This parameterization will include terms: $x_1$, $x_2^2$, $x_1 x_2$ that are not required to approximate the true map.
+total_order2 = 2;
+fixed_mset2 = FixedMultiIndexSet(2,total_order2);
+%% 
+% This parameterization will include terms: $x_1$, $x_2^2$, $x_1 x_2$ that are 
+% not required to approximate the true map.
+% 
 % Let's define $S_2$ with one multi-index set.
 
-% code 
-
-% code
+map_options2 = MapOptions;
+S2 = CreateComponent(fixed_mset2,map_options2);
 %% Approximation before optimization
 % Coefficients of map components are set to 0 upon creation. The triangular 
 % transport map composed by $S_1$ and $S_2$ is defined by:
 
-% code 
-
-% code 
+transport_map = TriangularMap([S1,S2]);
+transport_map.SetCoeffs([S1.CoeffMap,S2.CoeffMap]);
+%% 
 % Reference density:
+
 % For plotting and computing reference density
+ngrid=100;
+t = linspace(-5,5,ngrid);
+[X_t,Y_t] = meshgrid(t,t);
+ref_pdf_at_grid = mvnpdf([X_t(:) Y_t(:)]);
 
-% code 
-
-% code 
-
-% code 
-
-% code 
+%% 
 % Transport of target samples via $S$:
 
-% code
+r_test_before_opt = transport_map.Evaluate(test_x);
 %% 
+% 
+
 % Before optimization plot
+figure
+hold on
+contour(X_t,Y_t,reshape(ref_pdf_at_grid,ngrid,ngrid))
+scatter(r_test_before_opt(1,:),r_test_before_opt(2,:),'MarkerFaceColor',[0 0.4470 0.7410],'MarkerEdgeColor','none','MarkerFaceAlpha',0.1);
+xlabel('r_1')
+ylabel('r_2')
+legend('Reference density','Pushed target samples through S')
+title('Before optimization')
 
-% code 
+% Print initial coeffs and objective values
+obj1=objective(S1.CoeffMap(), S1, test_x(1,:));
+obj2=objective(S2.CoeffMap(),S2,test_x);
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Print initial coeffs and objective
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code
+disp('==================')
+disp('Starting coeffs component 1:')
+disp(S1.CoeffMap())
+disp(['Objective value for component 1: ',num2str(obj1)])
+disp('==================')
+disp('Starting coeffs component 2:')
+disp(S2.CoeffMap())
+disp(['Objective value for component 2: ' ,num2str(obj2)])
+disp('==================')
 %% 
 % 
 %% Optimization
 % Optimization of $S_1$ and $S_2$ coefficients are performed independently.
 %% Optimization of $S_1$
 % For $S_1$ only samples of the first coordinate $x_1$ are required to solve 
-% the minimization problem. Optimize
+% the minimization problem. 
 
-% code 
-
-% code
-%% Optimization of $S_2$
 % Optimize
+obj = @(w) objective(w,S1,x(1,:));
+w0 = S1.Coeffs();
 
-% code 
+options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
+[~] = fminunc(obj, w0, options);
+%% Optimization of $S_2$
 
-% code
+% Optimize
+obj = @(w) objective(w,S2,x);
+w0 = S2.Coeffs();
+
+options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
+[~] = fminunc(obj, w0, options);
 %% Approximation after optimization
 %% Normality of pushed samples:
-% Building triangular map from components:
+% Coefficients of |transport_map| are now updated, let's transport testing samples 
+% again:
 
-% code 
-
-% code 
-% Transport of testing samples from target:
-
-% code
+r_test_after_opt = transport_map.Evaluate(test_x);
 %% 
-% Before optimization plot
+% After optimization plot
 
-% code 
+% After optimization plot 
+figure
+hold on
+contour(X_t,Y_t,reshape(ref_pdf_at_grid,ngrid,ngrid))
+scatter(r_test_after_opt(1,:),r_test_after_opt(2,:),'MarkerFaceColor',[0 0.4470 0.7410],'MarkerEdgeColor','none','MarkerFaceAlpha',0.1);
+xlabel('r_1')
+ylabel('r_2')
+legend('Reference density','Pushed target samples through S')
+title('After optimization')
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
 % Print final coeffs and objective
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code
+obj1=objective(S1.CoeffMap(), S1, test_x(1,:));
+obj2=objective(S2.CoeffMap(),S2,test_x);
+disp('==================')
+disp('Final coeffs component 1:')
+disp(S1.CoeffMap())
+disp(['Objective value for component 1: ',num2str(obj1)])
+disp('==================')
+disp('Final coeffs component 2:')
+disp(S2.CoeffMap())
+disp(['Objective value for component 2: ' ,num2str(obj2)])
+disp('==================')
 %% 
 % After optimization testing samples are visually distributed according to the 
 % standard normal which tell us that the map has been computed accurately. Another 
 % estimation of the approximation quality is to test normality of the pushed samples. 
 % One simple way to do that is to compute first moments of the pushed test samples: 
-% Print statistics of normalized samples
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
+% Print statistics of normalized samples 
+disp('==================')
+mean_of_map = mean(r_test_after_opt,2);
+disp("Mean of normalized test samples:")
+disp(mean_of_map')
+disp('==================')
+disp("Cov of normalized test samples:")
+cov_of_map = cov(r_test_after_opt');
+disp(cov_of_map)
+disp('==================')
+%% 
 % Here mean should be 0 and covariance matrix should be identity.
 %% Comparison with the true transport map
 % Since the true transport map for this problem is known, we can compare directly 
 % map evaluations component by component.
-% 
-% Evaluation grid
 
-% code 
+% Evaluation grid 
 
-% code 
+ngrid=100;
+x1_t = linspace(-3,3,ngrid);
+x2_t = linspace(-3,7.5,ngrid);
+[xx1,xx2] = meshgrid(x1_t,x2_t);
 
-% code 
-
-% code 
-
-% code
+xx = [xx1(:)';xx2(:)'];
 %% 
-% First component
+% First component:
 
-% code 
+figure
+hold on
+plot(x1_t,x1_t)
+plot(x1_t,S1.Evaluate(x1_t))
+xlabel('x_1')
+legend('true map','map approximation')
+title('S_1')
+%% 
+% Second component:
 
-% code 
+map_eval_true = xx(2,:) - xx(1,:).^2;
+map_eval_approx = S2.Evaluate(xx);
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Second component
-%%
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code
+figure
+hold on
+contour(xx1,xx2,reshape(map_eval_true,ngrid,ngrid))
+contour(xx1,xx2,reshape(map_eval_approx,ngrid,ngrid),'LineStyle','--')
+xlabel('x_1')
+ylabel('x_2')
+legend('true map','map approximation')
+title('S_2(x_1,x_2)')
 %% 
 % 
 %% Contours of map-induced density
 % We can also compare contours of the map-induced density and true unnormalized 
 % density.
-% 
-% Map induced pdf
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-% True density
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code
-%% 
-% Comparison grid
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
 % For plotting and computing densities
+true_pdf_at_grid = np.exp(target_logpdf(xx));
+map_induced_pdf = pullback_pdf(transport_map,xx);
 
-% code 
-
-% code 
-
-% code 
-%SCA = ax.scatter(test_x[0,:2000],test_x[1,:2000], facecolor='blue', alpha=0.1,label='Target samples')
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-%matlab.internal.liveeditor.openAndConvert('FromSamples2D_banana.mlx','FromSamples2D_banana.m')
-
+figure
+contour(xx1,xx2,true_pdf_at_grid.reshape(ngrid,ngrid));
+contour(xx1,xx2,map_induced_pdf.reshape(ngrid,ngrid),'LineStyle','--');
+xlabel('x_1')
+ylabel('x_2')
+legend('Unnormalized target','TM approximation')
 %% Custom functions needed for this example
 
 function [L,dwL]=objective(coeffs,tri_map,x)
@@ -435,7 +332,7 @@ ref_of_map_of_x = log(normpdf(map_of_x));
 log_det = tri_map.LogDeterminant(x);
 
 % negative log-likelihood of the entire dataset
-L = - sum(ref_of_map_of_x + log_det)/num_points;
+L = - sum(ref_of_map_of_x + log_det')/num_points;
 
 if (nargout > 1)
     % Compute the inner product of the map jacobian (\nabla_w S) and the gradient (which is just -S(x) here)
@@ -449,4 +346,20 @@ if (nargout > 1)
 end
 end
 %% 
-%
+% 
+
+function pdf = pullback_pdf(tri_map,x)
+% definition of map induced pdf
+   r = tri_map.Evaluate(x);
+   log_pdf = log(mvnpdf(r))+tri_map.LogDeterminant(x);
+   pdf = exp(log_pdf);
+end
+%% 
+% 
+
+function logpdf = target_logpdf(x)
+% definition of the true log-pdf
+logpdf1 = log(normpdf(x(1,:)));
+logpdf2 = normpdf(x(2,:)-x(1,:).^2);
+logpdf = logpdf1 + logpdf2;
+end
