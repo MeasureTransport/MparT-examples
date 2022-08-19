@@ -145,7 +145,7 @@ disp('==================')
 obj = @(w) objective(w,transport_map,x);
 w0 = transport_map.Coeffs();
 
-options = optimoptions('fminunc','SpecifyObjectiveGradient', false, 'Display', 'none');
+options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
 [~] = fminunc(obj, w0, options);
 
 % Print final coeffs and objective
@@ -204,14 +204,20 @@ xlabel('x_1')
 ylabel('x_2')
 legend('Unnormalized target','TM approximation')
 %%
+x_eval = linspace(-4,4,10);
+xx_eval = [x_eval;x_eval];
+
+
 %matlab.internal.liveeditor.openAndConvert('FromDensity2D_banana.mlx','FromDensity2D_banana.m')
+[L,dWL] = objective(ones(1,9),transport_map,xx_eval);
 
 %% Custom functions needed for this example
 
 function logpdf = target_logpdf(x)
 % definition of the banana unnormalized density
-logpdf1 = log(normpdf(x(1,:)));
-logpdf2 = log(normpdf(x(2,:)-x(1,:).^2));
+logpdf1 = -0.5*log(2*pi)-0.5*x(1,:).^2;
+y2 = (x(2,:)-x(1,:).^2);
+logpdf2 = -0.5*log(2*pi)-0.5*y2.^2;
 logpdf = logpdf1 + logpdf2;
 end
 %% 
@@ -240,8 +246,8 @@ L = - sum(logpdf + log_det')/num_points;
 if (nargout > 1)
     sens_vecs = target_grad_logpdf(map_of_x);
     grad_logpdf = transport_map.CoeffGrad(x,sens_vecs);
-    grad_log_det = transport_map.LogDeterminant(x);
-    dwL = - sum(grad_logpdf + grad_log_det',2)/num_points;
+    grad_log_det = transport_map.LogDeterminantCoeffGrad(x);
+    dwL = - sum(grad_logpdf + grad_log_det,2)/num_points;
 end
 end
 %% 
