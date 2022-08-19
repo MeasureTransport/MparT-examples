@@ -1,7 +1,7 @@
 # Known issue: will translate italic to bold
 
 #open file in read mode
-notebook_name="FromSamples2D_banana"
+notebook_name="FromDensity2D_banana"
 file = open("../python/"+notebook_name+".py", "r")
 
 replaced_content = "%%"+"\n"
@@ -27,34 +27,39 @@ for line in file:
                     new_line = line.replace("# #", "%% ")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
+                    new_line=new_line.replace("\sharp","*")
                     replaced_content = replaced_content + new_line + "\n"
                 elif line[:5]=="# ## ":
                     new_line = line.replace("# ##", "%% ")
                     new_line=new_line.replace("`","|")                    
                     new_line=new_line.replace("**","*")
+                    new_line=new_line.replace("\sharp","*")
                     replaced_content = replaced_content + new_line + "\n"                
                 elif line[:6]=="# ### ":
                     new_line = line.replace("# ###", "%%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
+                    new_line=new_line.replace("\sharp","*")
                     replaced_content = replaced_content + new_line + "\n"
                 elif line[:7]=="# #### ":
                     new_line = line.replace("# ####", "%%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
+                    new_line=new_line.replace("\sharp","*")
                     replaced_content = replaced_content + new_line + "\n"
                 elif line[:8]=="# ##### ":
                     new_line = line.replace("# #####", "%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
+                    new_line=new_line.replace("\sharp","*")
                     replaced_content = replaced_content + new_line + "\n"                  
                 else:
                     new_line = line.replace("#", "%")
                     new_line=new_line.replace("`","|")
                     new_line=new_line.replace("**","*")
+                    new_line=new_line.replace("\sharp","*")
                     replaced_content = replaced_content + new_line + "\n"
             else:
-                print(line)
                 new_line = "\n"+ "% code "
                 replaced_content = replaced_content + new_line + "\n"
     #concatenate the new string and add an end-line break

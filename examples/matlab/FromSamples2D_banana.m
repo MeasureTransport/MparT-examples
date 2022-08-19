@@ -310,12 +310,13 @@ title('S_2(x_1,x_2)')
 % density.
 
 % For plotting and computing densities
-true_pdf_at_grid = np.exp(target_logpdf(xx));
+true_pdf_at_grid = exp(target_logpdf(xx));
 map_induced_pdf = pullback_pdf(transport_map,xx);
 
 figure
-contour(xx1,xx2,true_pdf_at_grid.reshape(ngrid,ngrid));
-contour(xx1,xx2,map_induced_pdf.reshape(ngrid,ngrid),'LineStyle','--');
+hold on
+contour(xx1,xx2,reshape(true_pdf_at_grid,ngrid,ngrid));
+contour(xx1,xx2,reshape(map_induced_pdf,ngrid,ngrid),'LineStyle','--');
 xlabel('x_1')
 ylabel('x_2')
 legend('Unnormalized target','TM approximation')
@@ -351,15 +352,15 @@ end
 function pdf = pullback_pdf(tri_map,x)
 % definition of map induced pdf
    r = tri_map.Evaluate(x);
-   log_pdf = log(mvnpdf(r))+tri_map.LogDeterminant(x);
+   log_pdf = log(mvnpdf(r'))+tri_map.LogDeterminant(x);
    pdf = exp(log_pdf);
 end
 %% 
 % 
 
 function logpdf = target_logpdf(x)
-% definition of the true log-pdf
+% definition of the banana unnormalized density
 logpdf1 = log(normpdf(x(1,:)));
-logpdf2 = normpdf(x(2,:)-x(1,:).^2);
+logpdf2 = log(normpdf(x(2,:)-x(1,:).^2));
 logpdf = logpdf1 + logpdf2;
 end
