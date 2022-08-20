@@ -57,13 +57,12 @@ set(0, 'DefaultAxesBox', 'on');
 % knowledge of $\pi(\mathbf{y}|\mathbf{\theta})\pi(\mathbf{\theta})$ build a transport 
 % map that transports samples from the reference $\eta$ to samples from posterior  
 % $\pi(\mathbf{\theta}|\mathbf{y})$.
-%% Application with the Biochemical Oxygen Demand (BOD) model from <http://%3Chttps//or.water.usgs.gov/proj/keno_reach/download/chemgeo_bod_final.pdf Sullivan et al., 2010>
+%% Application with the Biochemical Oxygen Demand (BOD) model from <https://or.water.usgs.gov/proj/keno_reach/download/chemgeo_bod_final.pdf Sullivan et al., 2010>
 %% Definition
 % To illustrate the process describe above, we consider the BOD inverse problem 
-% described in <http://%3Chttps//arxiv.org/pdf/1602.05023.pdf Marzouk et al., 
-% 2016>. The goal is to estimate $2$ coefficients in a time-dependent model of 
-% oxygen demand, which is used as an indication of biological activity in a water 
-% sample.
+% described in <https://arxiv.org/pdf/1602.05023.pdf Marzouk et al., 2016>. The 
+% goal is to estimate $2$ coefficients in a time-dependent model of oxygen demand, 
+% which is used as an indication of biological activity in a water sample.
 % 
 % The time dependent forward model is defined as
 % 
@@ -144,7 +143,7 @@ legend('Unnormalized posterior')
 % the desired map $T$ to characterize the posterior density result in a "classic" 
 % map from unnomarlized computation.
 %% Definition of the objective function:
-% Knowing the closed form of unnormalized posterior $\bar{\pi}(\mathbf{\theta}     
+% Knowing the closed form of unnormalized posterior $\bar{\pi}(\mathbf{\theta}      
 % |\mathbf{y})= \pi(\mathbf{y}|\mathbf{\theta})\pi(\mathbf{\theta})$, the objective 
 % is to find a map-induced density $\tilde{\pi}_{\mathbf{w}}(\mathbf{x})$ that 
 % is a good approximation to the posterior $\pi(\mathbf{\theta} |\mathbf{y})$.

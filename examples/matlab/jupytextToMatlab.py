@@ -1,7 +1,7 @@
 # Known issue: will translate italic to bold
 
 #open file in read mode
-notebook_name="BayesianInference_BOD"
+notebook_name="SparseDensityEstimation_SV"
 file = open("../python/"+notebook_name+".py", "r")
 
 replaced_content = "%%"+"\n"
