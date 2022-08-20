@@ -32,7 +32,7 @@
 % threads used by |MParT| as an argument of the |KokkosInitialize| function. The 
 % number of threads can only be set once per session.
 
-addpath(genpath('~/Installations/MParT/matlab'))
+addpath(genpath('your/MParT/install/path'))
 num_threads = 8;
 KokkosInitialize(num_threads);
 %% 
