@@ -86,7 +86,7 @@ def generate_SV_samples(d,N):
 
 # Set dimension of the problem:
 
-T = 40 #number of time steps including initial condition
+T = 30 #number of time steps including initial condition
 d = T+2
 
 # Few realizations of the process look like
@@ -300,7 +300,7 @@ KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
 
 # #### Optimization
 #
-# This step can take quite a long time depending of the number of time steps
+# This step can take few minutes depending on the number of time steps set at the definition of the problem.
 
 # +
 # Total order 2 approximation
@@ -435,7 +435,7 @@ ax.set_ylabel('$D_{KL}(\pi(\mathbf{x}_t)||S^\sharp \eta)$')
 plt.legend()
 plt.show()
 
-# Usually increasing map complexity will improve map approximation. However when the number of parameters increases too much compared to the number of samples, computed map overfits the data which lead to worst approximation. This overfitting can be seen in this examples when looking at the total order 2 approximation that slowly loses accuracy when the dimension increases. Total order 2 approximation while performing better than order 1 for low dimension perform worst when dimension is greater than ~27. approximation thatn total order 1 with dimension greater than 27.
+# Usually increasing map complexity will improve map approximation. However when the number of parameters increases too much compared to the number of samples, computed map overfits the data which lead to worst approximation. This overfitting can be seen in this examples when looking at the total order 2 approximation that rapidly loses accuracy when the dimension increases.
 #
 # Using sparse multi-index sets help reduces the increase of parameters when the dimension increases leading to better approximation for all dimensions.
 
@@ -452,6 +452,6 @@ ax.set_ylabel('# coefficients')
 plt.legend()
 plt.show()
 
-# We can observe the exponential growth of the number coefficients for the total order 2 approximation. Chosen sparse multi-index sets have a fixed number of parameters which become smaller than the number of parameters of the total order 1 approximation when dimension is about 15. 
+# We can observe the exponential growth of the number coefficients for the total order 2 approximation. Chosen sparse multi-index sets have a fixed number of parameters which become smaller than the number of parameters of the total order 1 approximation when dimension is 15.
 
-# Using less parameters help error scaling with the number of dimension but also computation time for the optimization and the computation time when evaluating the transport map. 
+# Using less parameters helps error scaling with dimension but aslo helps reducing computation time for the optimization and the evaluation the transport maps.
