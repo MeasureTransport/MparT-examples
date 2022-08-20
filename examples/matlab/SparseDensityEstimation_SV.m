@@ -1,3 +1,5 @@
+matlab.internal.liveeditor.openAndConvert('SparseDensityEstimation_SV.mlx','SparseDensityEstimation_SV.m')
+%% 
 %% Density estimation with sparse transport maps
 % In this example we demonstrate how MParT can be use to build map with certain 
 % sparse structure in order to characterize high dimensional densities with conditional 
@@ -39,7 +41,7 @@ set(0, 'DefaultAxesBox', 'on');
 % 
 % $$$ Z_0 | \mu, \phi \sim \mathcal{N}\left(\mu,\frac{1}{1-\phi^2}\right)$$
 % 
-% The objective is to characterize the joint density of $$\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T),   
+% The objective is to characterize the joint density of $$\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T),    
 % $$ with $T$ being arbitrarly large. The conditional independence property for 
 % this problem reads
 % 
@@ -217,9 +219,6 @@ set(0, 'DefaultAxesBox', 'on');
 % \nabla_\mathbf{r}\log \eta \left(S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right) 
 % - \frac{\partial \nabla_{\mathbf{w}_k}S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial 
 % x_k} \left[\frac{\partial S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial x_k}\right]^{-1}\right),$$
-
-
-
 %% Negative log likelihood objective
 
 % code 
@@ -375,7 +374,7 @@ set(0, 'DefaultAxesBox', 'on');
 % From the independence structure mentionned in the problem formulation we have:
 %% 
 % * $\pi(\mu,\phi)=\pi(\mu)\pi(\phi)$, meaning $S_2$ only dependes on $\phi$
-% * $\pi(z_{k-2}|z_{k-3},...,z_{0},\phi,\mu)=\pi(z_{k-2}|z_{k-3},\phi,\mu),\,\,   
+% * $\pi(z_{k-2}|z_{k-3},...,z_{0},\phi,\mu)=\pi(z_{k-2}|z_{k-3},\phi,\mu),\,\,    
 % k>3$, meaning $S_k$, only depends on $z_{k-2}$, $z_{k-3}$ , $\phi$ and $\mu$
 %% 
 % Complexity of map component can also be deducted from problem formulation:
@@ -521,8 +520,76 @@ set(0, 'DefaultAxesBox', 'on');
 % code 
 % We can observe the exponential growth of the number coefficients for the total order 2 approximation. Chosen sparse multi-index sets have a fixed number of parameters which become smaller than the number of parameters of the total order 1 approximation when dimension is about 15.
 % Using less parameters help error scaling with the number of dimension but also computation time for the optimization and the computation time when evaluating the transport map.
-matlab.internal.liveeditor.openAndConvert('SparseDensityEstimation_SV.mlx','SparseDensityEstimation_SV.m')
 %% Custom functions needed for this example
+% 
+
+function X = generate_SV_samples(d,N)
+    % Sample hyper-parameters
+    sigma = 0.25;
+    mu = randn(1,N);
+    phis = 3+randn(1,N);
+    phi = 2*exp(phis)./(1+exp(phis))-1;
+    X = [mu;phi];
+    if d > 2
+        % Sample Z0
+        Z = sqrt(1./(1-phi.^2))*randn(1,N) + mu;
+        % Sample auto-regressively
+        for i=1:d-3
+            Zi = mu + phi.*(Z(end,:)-mu)+sigma*randn(1,N);
+            Z = [Z;Zi];
+        end
+        X = [X;Z];
+    end
+end
+%% 
+% 
+
+function logPdf=SV_log_pdf(X)
+    %conditional log-pdf for the SV problem
+
+    sigma = 0.25;
+    % Extract variables mu, phi and states
+    mu = X(1,:);
+    phi = X(2,:);
+    Z = X(3:end,:);
+
+    % Compute density for mu
+    logPdfMu = log(normpdf(mu));
+    % Compute density for phi
+    phiRef = log((1+phi)./(1-phi));
+    dphiRef = 2./(1-phi.^2);
+    logPdfPhi = normpdf((phiRef)+log(dphiRef),3,1);
+    % Add piMu, piPhi to density
+    logPdf = [logPdfMu;logPdfPhi];
+
+    % Number of time steps
+    dz = size(Z,1);
+    if dz > 0
+        % Conditonal density for Z_0
+        muZ0 = mu;
+        stdZ0 = sqrt(1./(1-phi.^2));
+        logPdfZ0 = log(normpdf(Z(1,:),muZ0,stdZ0));
+        logPdf = [logPdf;logPdfZ0];
+
+        % Compute auto-regressive conditional densities for Z_i|Z_{1:i-1}
+        for i=2:dz
+            meanZi = mu + phi .*(Z(i-1,:)-mu);
+            stdZi = sigma;
+            logPdfZi = log(normpdf(Z(i,:),meanZi,stdZi));
+            logPdf = [logPdf;logPdfZi];
+        end
+    end
+end
+%% 
+% 
+
+ function log_pdf=log_cond_pullback_pdf(triMap,x)
+    %log-conditonal pullback density
+    r = triMap.Evaluate(x);
+    log_pdf = log(mvnpdf(r'))+triMap.LogDeterminant(x)';
+ end 
+%% 
+% 
 
 function [L,dwL]=objective(coeffs,tri_map,x)
 % Negative log likelihood objective
@@ -547,16 +614,4 @@ if (nargout > 1)
     % Gradient of the negative log-likelihood
     dwL = - sum(grad_ref_of_map_of_x + grad_log_det,2)/num_points;
 end
-end
-function pdf = pullback_pdf(tri_map,x)
-% definition of map induced pdf
-   r = tri_map.Evaluate(x);
-   log_pdf = log(mvnpdf(r'))+tri_map.LogDeterminant(x);
-   pdf = exp(log_pdf);
-end
-function logpdf = target_logpdf(x)
-% definition of the banana unnormalized density
-logpdf1 = log(normpdf(x(1,:)));
-logpdf2 = log(normpdf(x(2,:)-x(1,:).^2));
-logpdf = logpdf1 + logpdf2;
 end
