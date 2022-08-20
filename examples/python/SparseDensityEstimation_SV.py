@@ -106,8 +106,8 @@ plt.xlabel("Days (d)");
 
 hyper_params = Xvisu[:2,:]
 plt.figure()
-plt.plot(range(1,11),Xvisu[1,:],label='$\mu$')
-plt.plot(range(1,11),Xvisu[2,:],label='$\phi$')
+plt.plot(range(1,Nvisu+1),Xvisu[1,:],label='$\mu$')
+plt.plot(range(1,Nvisu+1),Xvisu[2,:],label='$\phi$')
 plt.xlabel('Samples')
 plt.legend()
 plt.show()
