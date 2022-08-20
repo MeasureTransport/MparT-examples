@@ -162,7 +162,7 @@ KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1);
 % Here we use a total order 2 multivariate expansion to parameterize each component  
 % $S_k$, $k \in \{1,...,T+2\}$.
 %% Optimization
-% This step can take quite a long time depending of the number of time steps
+% This step can take few minutes depending on the number of time steps set at the definition of the problem 
 
 totalOrder = 2;
 logPdfTM_to2 = zeros(d,Ntest);
