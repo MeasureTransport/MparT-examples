@@ -98,7 +98,7 @@ Xvisu = generate_SV_samples(d, Nvisu)
 Zvisu = Xvisu[2:,:]
 
 plt.figure()
-plt.plot(Xvisu);
+plt.plot(Zvisu);
 plt.xlabel("Days (d)");
 # -
 
