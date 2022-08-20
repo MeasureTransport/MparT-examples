@@ -1,7 +1,13 @@
 %% Transport Map from density
+%
 % The objective of this example is to show how a transport map can be build 
 % in MParT when the the unnormalized probability density function of the target 
 % density is known.
+%
+% _The rendered live script version of this example can be obtain by doing "Open 
+% as Live Script” from the Current Folder Browser or document tab or by doing 
+% "Save as ..." and select the "MATLAB Live Code Files (*.mlx)" format._
+%
 %% Problem description
 % We consider $T(\mathbf{z};\mathbf{w})$ a monotone triangular transport map 
 % parameterized by $\mathbf{w}$ (e.g., polynomial coefficients). This map which 

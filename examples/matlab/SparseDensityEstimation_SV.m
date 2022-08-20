@@ -1,7 +1,12 @@
 %% Density estimation with sparse transport maps
+%
 % In this example we demonstrate how MParT can be use to build map with certain 
 % sparse structure in order to characterize high dimensional densities with conditional 
 % independence.
+% 
+% _The rendered live script version of this example can be obtain by doing "Open 
+% as Live Script” from the Current Folder Browser or document tab or by doing 
+% "Save as ..." and select the "MATLAB Live Code Files (*.mlx)" format._
 %% Imports
 % First, import |MParT| by adding the path to the installation folder and initialize 
 % the |Kokkos| environment. Note that it is possible to specify the number of 
@@ -14,7 +19,7 @@ KokkosInitialize(num_threads);
 %% 
 % Default settings:
 
-sd = 30; rng(sd);
+sd = 3; rng(sd);
 
 set(0,'DefaultLineLineWidth',1.75)
 set(0,'defaultAxesFontSize',12)
@@ -27,19 +32,17 @@ set(0, 'DefaultAxesBox', 'on');
 % and $\phi$ and state variable $Z_k$ represents log-volatility at times $k=1,...,T$. 
 % The log-volatility follows the order-one autoregressive process: 
 % 
-% $$$Z_{k+1} = \mu + \phi(Z_k-\mu) + \epsilon_k, k>1,$$$ 
+% $$Z_{k+1} = \mu + \phi(Z_k-\mu) + \epsilon_k, k>1,$$
 % 
 % where 
 % 
-% $$$$
+% $$ \phi = 2\frac{\exp(\phi^*)}{1+\exp(\phi^*)}, \,\,\, \phi^* \sim \mathcal{N}(3,1)$$
 % 
-% $$$ \phi = 2\frac{\exp(\phi^*)}{1+\exp(\phi^*)}, \,\,\, \phi^* \sim \mathcal{N}(3,1)$$
+% $$ Z_0 | \mu, \phi \sim \mathcal{N}\left(\mu,\frac{1}{1-\phi^2}\right)$$
 % 
-% $$$ Z_0 | \mu, \phi \sim \mathcal{N}\left(\mu,\frac{1}{1-\phi^2}\right)$$
-% 
-% The objective is to characterize the joint density of $$\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T),     
-% $$ with $T$ being arbitrarly large. The conditional independence property for 
-% this problem reads
+% The objective is to characterize the joint density of $$\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T),        
+% with $T$ being arbitrarly large. The conditional independence property for this 
+% problem reads
 % 
 % $$ \pi(\mathbf{x}_t|\mathbf{x}_{<t}) = \pi(\mathbf{x}_t|\mathbf{x}_{t-1},\mu,\phi)$$
 % 
@@ -99,19 +102,6 @@ X = generate_SV_samples(d,N);
 
 Ntest = 5000; %Number of testing samples
 Xtest = generate_SV_samples(d,Ntest);
-
-Xtest = load('Xtest.txt');
-
-opts = MapOptions();
-opts.basisType = BasisTypes.HermiteFunctions;
-
-fixed_mset = FixedMultiIndexSet(d,2)
-S = CreateComponent(fixed_mset,opts)
-w = 0.01*ones(size(S.CoeffMap()))
-S.SetCoeffs(w);
-YY=log_cond_pullback_pdf(S,Xtest);
-
-return
 %% Objective function and gradient
 % We use the minimization of negative log-likelihood to optimize map components. 
 % For map component $k$, the objective function is given by
@@ -210,7 +200,7 @@ KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2);
 % From the independence structure mentionned in the problem formulation we have:
 %% 
 % * $\pi(\mu,\phi)=\pi(\mu)\pi(\phi)$, meaning $S_2$ only dependes on $\phi$
-% * $\pi(z_{k-2}|z_{k-3},...,z_{0},\phi,\mu)=\pi(z_{k-2}|z_{k-3},\phi,\mu),\,\,     
+% * $\pi(z_{k-2}|z_{k-3},...,z_{0},\phi,\mu)=\pi(z_{k-2}|z_{k-3},\phi,\mu),\,\,        
 % k>3$, meaning $S_k$, only depends on $z_{k-2}$, $z_{k-3}$ , $\phi$ and $\mu$
 %% 
 % Complexity of map component can also be deducted from problem formulation:
@@ -305,9 +295,7 @@ legend('Total order 1','Total order 2','Sparse MultiIndexSet')
 % when the number of parameters increases too much compared to the number of samples, 
 % computed map overfits the data which lead to worst approximation. This overfitting 
 % can be seen in this examples when looking at the total order 2 approximation 
-% that slowly loses accuracy when the dimension increases. Total order 2 approximation 
-% while performing better than order 1 for low dimension perform worst when dimension 
-% is greater than ~27.
+% that rapidly loses accuracy when the dimension increases. 
 % 
 % Using sparse multi-index sets help reduces the increase of parameters when 
 % the dimension increases leading to better approximation for all dimensions.
@@ -327,11 +315,10 @@ legend('Total order 1','Total order 2','Sparse MultiIndexSet')
 % We can observe the exponential growth of the number coefficients for the total 
 % order 2 approximation. Chosen sparse multi-index sets have a fixed number of 
 % parameters which become smaller than the number of parameters of the total order 
-% 1 approximation when dimension is about 15.
+% 1 approximation when dimension is 15.
 % 
-% Using less parameters help error scaling with the number of dimension but 
-% also computation time for the optimization and the computation time when evaluating 
-% the transport map.
+% Using less parameters helps error scaling with dimension but aslo helps reducing 
+% computation time for the optimization and the evaluation the transport maps.
 %% Custom functions needed for this example
 
 function X = generate_SV_samples(d,N)
@@ -363,11 +350,11 @@ phi = X(2,:);
 Z = X(3:end,:);
 
 % Compute density for mu
-logPdfMu = log(normpdf(mu));
+logPdfMu = normlogpdf(mu);
 % Compute density for phi
 phiRef = log((1+phi)./(1-phi));
 dphiRef = 2./(1-phi.^2);
-logPdfPhi = log(normpdf((phiRef),3,1))+log(dphiRef);
+logPdfPhi = normlogpdf(phiRef,3,1)+log(dphiRef);
 % Add piMu, piPhi to density
 logPdf = [logPdfMu;logPdfPhi];
 
@@ -377,14 +364,14 @@ if dz > 0
     % Conditonal density for Z_0
     muZ0 = mu;
     stdZ0 = sqrt(1./(1-phi.^2));
-    logPdfZ0 = log(normpdf(Z(1,:),muZ0,stdZ0));
+    logPdfZ0 = normlogpdf(Z(1,:),muZ0,stdZ0);
     logPdf = [logPdf;logPdfZ0];
 
     % Compute auto-regressive conditional densities for Z_i|Z_{1:i-1}
     for i=2:dz
         meanZi = mu + phi .*(Z(i-1,:)-mu);
         stdZi = sigma;
-        logPdfZi = log(normpdf(Z(i,:),meanZi,stdZi));
+        logPdfZi = normlogpdf(Z(i,:),meanZi,stdZi);
         logPdf = [logPdf;logPdfZi];
     end
 end
@@ -396,8 +383,13 @@ r = triMap.Evaluate(x);
 log_pdf = normlogpdf(r)+triMap.LogDeterminant(x)';
 end
 
-function logpdf=normlogpdf(x)
+function logpdf=normlogpdf(varargin)
+    x = varargin{1};
+    if nargin ==1
     logpdf = -0.5*(log(2*pi)+x.^2);
+    else
+     logpdf = -log(sqrt(2*pi)*varargin{3})-0.5*((x-varargin{2})/varargin{3}).^2;
+    end
 end
 
 function [L,dwL]=objective(coeffs,tri_map,x)

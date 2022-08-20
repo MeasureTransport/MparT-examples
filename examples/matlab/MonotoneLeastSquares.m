@@ -1,6 +1,12 @@
 %% Monotone least squares
+%
 % The objective of this example is to show how to build a transport map to solve 
 % monotone regression problems using MParT.
+%
+% _The rendered live script version of this example can be obtain by doing "Open 
+% as Live Script” from the Current Folder Browser or document tab or by doing 
+% "Save as ..." and select the "MATLAB Live Code Files (*.mlx)" format._
+%
 %% Problem formulation
 % One direct use of the monotonicity property given by the transport map approximation 
 % to model monotone functions from noisy data. This is called isotonic regression 

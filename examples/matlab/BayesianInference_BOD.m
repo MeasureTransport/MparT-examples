@@ -1,6 +1,12 @@
 %% Characterization of Bayesian posterior density
+%
 % The objective of this example is to demonstrate how transport maps can be 
 % used to represent posterior distribution of Bayesian inference problems.
+%
+% _The rendered live script version of this example can be obtain by doing "Open 
+% as Live Script” from the Current Folder Browser or document tab or by doing 
+% "Save as ..." and select the "MATLAB Live Code Files (*.mlx)" format._
+%
 %% Imports
 % First, import |MParT| by adding the path to the installation folder and initialize 
 % the |Kokkos| environment. Note that it is possible to specify the number of 

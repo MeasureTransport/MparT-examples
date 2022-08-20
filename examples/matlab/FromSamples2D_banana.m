@@ -1,6 +1,12 @@
 %% Transport map from samples
+%
 % The objective of this example is to show how a transport map can be build 
 % in MParT when samples from the target density are known.
+%
+% _The rendered live script version of this example can be obtain by doing "Open 
+% as Live Script” from the Current Folder Browser or document tab or by doing 
+% "Save as ..." and select the "MATLAB Live Code Files (*.mlx)" format._
+%
 %% Problem formulation
 % From the definition of a transport map, the *function* $S(\mathbf{x}; \mathbf{w})$ 
 % is invertible and have a positive definite Jacobian for any parameters $w$. 
