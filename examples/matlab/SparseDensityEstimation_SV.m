@@ -1,5 +1,4 @@
 matlab.internal.liveeditor.openAndConvert('SparseDensityEstimation_SV.mlx','SparseDensityEstimation_SV.m')
-%% 
 %% Density estimation with sparse transport maps
 % In this example we demonstrate how MParT can be use to build map with certain 
 % sparse structure in order to characterize high dimensional densities with conditional 
@@ -16,14 +15,12 @@ KokkosInitialize(num_threads);
 %% 
 % Default settings:
 
-sd = 3; rng(sd);
+sd = 6; rng(sd);
 
 set(0,'DefaultLineLineWidth',1.75)
 set(0,'defaultAxesFontSize',12)
 set(0,'defaultfigurecolor',[1 1 1])
 set(0, 'DefaultAxesBox', 'on');
-%% 
-% 
 %% Stochastic volatility model
 %% Problem description
 % The problem considered here is a Markov process that describes the volatility 
@@ -31,11 +28,11 @@ set(0, 'DefaultAxesBox', 'on');
 % and $\phi$ and state variable $Z_k$ represents log-volatility at times $k=1,...,T$. 
 % The log-volatility follows the order-one autoregressive process: 
 % 
-% $$$Z_{k+1} = \mu + \phi(Z_k-\mu) + \epsilon_k, k>1, $$$ 
+% $$Z_{k+1} = \mu + \phi(Z_k-\mu) + \epsilon_k, k>1,$$ $$$$$ 
 % 
 % where 
 % 
-% $$$\mu \sim \mathcal{N}(0,1)  $$$ 
+% $$$$$$$\mu \sim \mathcal{N}(0,1)$$
 % 
 % $$$ \phi = 2\frac{\exp(\phi^*)}{1+\exp(\phi^*)}, \,\,\, \phi^* \sim \mathcal{N}(3,1)$$
 % 
@@ -51,161 +48,56 @@ set(0, 'DefaultAxesBox', 'on');
 % Baptista et al., 2022>.
 %% Sampling
 % Drawing samples $(\mu^i,\phi^i,x_0^i,x_1^i,...,x_T^i)$ can be performed by 
-% the following function
-
-% code 
-% Sample hyper-parameters
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Sample Z0
-
-% code 
-% Sample auto-regressively
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
+% function |generate_SV_samples| defined at the end of the script.
+% 
 % Set dimension of the problem:
 
-% code 
-
-% code 
-% Few realizations of the process look like
+T = 10; %Number of time steps including initial condition
+d = T+2;
 %% 
-% code 
+% Few realizations of the process look like
 
-% code 
+Nvisu = 10; %Number of samples
+Xvisu = generate_SV_samples(d,Nvisu);
 
-% code 
+Zvisu = Xvisu(3:end,:);
 
-% code 
-
-% code 
-
-% code
+figure
+plot(Zvisu)
+xlabel('Days (d)')
 %% 
 % And corresponding realization of hyperparameters
 
-% code 
+hyper_params = Xvisu(1:2,:);
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code
+figure
+hold on
+plot(1:Nvisu,Xvisu(1,:))
+plot(1:Nvisu,Xvisu(2,:))
+xlabel('Samples')
+legend('\mu','\phi')
 %% Probability density function
 % The exact log-conditional densities used to define joint density $\pi(\mathbf{x}_T)$ 
-% are defined by the following function:
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Extract variables mu, phi and states
-
-% code 
-
-% code 
-
-% code 
-% Compute density for mu
-
-% code 
-
-% code 
-% Compute density for phi
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Add piMu, piPhi to density
-
-% code 
-% Number of time steps
-
-% code 
-
-% code 
-% Conditonal density for Z_0
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Compute auto-regressive conditional densities for Z_i|Z_{1:i-1}
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code
+% are defined by the |SV_log_pdf| function.
 %% Transport map training
 % In the following we optimize each map component $S_k$, $k \in \{1,...,T+2\}$: 
-% * For $k=1$, map $S_1$ characterize marginal density $\pi(\mu)$ * For $k=2$, 
-% map $S_2$ characterize conditional density $\pi(\phi|\mu)$ * For $k=3$, map  
-% $S_3$ characterize conditional density $\pi(z_0|\phi,\mu)$ * For $k>3$, map  
-% $S_k$ characterize conditional density $\pi(z_{k-2}|z_{k-3},\phi,\mu)$ Definition 
-% of log-conditional density from map component $S_k$
-
-% code 
-
-% code 
-
-% code 
-
-% code
+%% 
+% * For $k=1$, map $S_1$ characterize marginal density $\pi(\mu)$
+% * For $k=2$, map $S_2$ characterize conditional density $\pi(\phi|\mu)$
+% * For $k=3$, map  $S_3$ characterize conditional density $\pi(z_0|\phi,\mu)$
+% * For $k>3$, map  $S_k$ characterize conditional density $\pi(z_{k-2}|z_{k-3},\phi,\mu)$ 
+%% 
+% Knowing $S_k$, the map induced log-density is defined by the function |log_cond_pullback_pdf|.
 %% Generating training and testing samples
 % From training samples generated with the known function we compare accuracy 
 % of the transport map induced density using different parameterization and a 
 % limited number of training samples.
 
-% code 
+N = 2000; %Number of training samples
+X = generate_SV_samples(d,N);
 
-% code 
-
-% code 
-
-% code
-%% 
-% 
+Ntest = 5000; %Number of testing samples
+Xtest = generate_SV_samples(d,Ntest);
 %% Objective function and gradient
 % We use the minimization of negative log-likelihood to optimize map components. 
 % For map component $k$, the objective function is given by
@@ -219,153 +111,83 @@ set(0, 'DefaultAxesBox', 'on');
 % \nabla_\mathbf{r}\log \eta \left(S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right) 
 % - \frac{\partial \nabla_{\mathbf{w}_k}S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial 
 % x_k} \left[\frac{\partial S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial x_k}\right]^{-1}\right),$$
-%% Negative log likelihood objective
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Compute the map-induced density at each point
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Return the negative log-likelihood of the entire dataset
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Evaluate the map
-
-% code 
-% Now compute the inner product of the map jacobian (\nabla_w S) and the gradient (which is just -S(x) here)
-
-% code 
-% Get the gradient of the log determinant with respect to the map coefficients
-
-% code 
-
-% code
-%% 
 % 
+% These functions are defined in the |objective| function.
 %% Training total order 1 map
 % Here we use a total order 1 multivariate expansion to parameterize each component  
 % $S_k$, $k \in \{1,...,T+2\}$.
 
-% code 
-
-% code
+opts = MapOptions;
+opts.basisType = BasisTypes.HermiteFunctions;
 %% Optimization
 % Total order 1 approximation
 
-% code 
+totalOrder = 1;
+logPdfTM_to1 = zeros(d,Ntest);
+ListCoeffs_to1=zeros(1,d);
 
-% code 
+disp('===== Total Order 1 approximation =====')
+fprintf('Map component:')
+for dk=1:d 
+    fprintf('%d ', dk);
+    fixed_mset = FixedMultiIndexSet(dk,totalOrder);
+    S = CreateComponent(fixed_mset,opts);
+    Xtrain = X(1:dk,:);
+    Xtestk = Xtest(1:dk,:);
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Reference density
-
-% code 
-% Compute log-conditional density at testing samples
-
-% code 
-
-% code
-%% 
-% 
+    ListCoeffs_to1(dk) = S.numCoeffs;
+    
+    % Optimize
+    obj = @(w) objective(w,S,Xtrain);
+    w0 = S.Coeffs();
+    options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
+    [~] = fminunc(obj, w0, options);
+    logPdfTM_to1(dk,:) = log_cond_pullback_pdf(S,Xtestk);
+end
 %% Compute KL divergence error
-% Since we know what the true is for problem we can compute the KL divergence  
+% Since we know what the true is for problem we can compute the KL divergence 
 % $D_{KL}(\pi(\mathbf{x}_t)||S^* \eta)$ between the map-induced density and the 
 % true density.
 
-% code 
+logPdfSV = SV_log_pdf(Xtest); % true log-pdfs
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
 % Compute joint KL divergence for total order 1 approximation
-
-% code
-%% 
-% 
+KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1);
 %% Training total order 2 map
 % Here we use a total order 2 multivariate expansion to parameterize each component  
 % $S_k$, $k \in \{1,...,T+2\}$.
 %% Optimization
 % This step can take quite a long time depending of the number of time steps
-% 
-% Total order 2 approximation
 
-% code 
+totalOrder = 2;
+logPdfTM_to2 = zeros(d,Ntest);
+ListCoeffs_to2=zeros(1,d);
+disp('===== Total Order 2 approximation =====')
+fprintf('Map component:')
+for dk=1:d 
+    fprintf('%d ', dk);
+    fixed_mset = FixedMultiIndexSet(dk,totalOrder);
+    S = CreateComponent(fixed_mset,opts);
+    Xtrain = X(1:dk,:);
+    Xtestk = Xtest(1:dk,:);
 
-% code 
+    ListCoeffs_to2(dk) = S.numCoeffs;
+    
+    % Optimize
+    obj = @(w) objective(w,S,Xtrain);
+    w0 = S.Coeffs();
+    options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
+    [~] = fminunc(obj, w0, options);
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Reference density
-
-% code 
-% Compute log-conditional density at testing samples
-
-% code 
-
-% code
+    logPdfTM_to2(dk,:) = log_cond_pullback_pdf(S,Xtestk);
+end
 %% 
 % 
 %% Compute KL divergence error
 % Compute joint KL divergence for total order 2 approximation
 
-% code
+% Compute joint KL divergence for total order 2 approximation
+KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2);
 %% Training sparse map
 % Here we use the prior knowledge of the conditional independence property of 
 % the target density $\pi(\mathbf{x}_T)$ to parameterize map components with a 
@@ -393,133 +215,113 @@ set(0, 'DefaultAxesBox', 'on');
 % total order 2
 %% Optimization
 
-% code 
-
-% code 
-
-% code 
+totalOrder = 2; 
+logPdfTM_sa = zeros(d,Ntest);
+ListCoeffs_sa = zeros(1,d);
+ 
 % MultiIndexSet for map S_k, k>3
+mset_to = MultiIndexSet.CreateTotalOrder(4,totalOrder);
 
-% code 
+maxOrder = 9; %order for map S_2
+disp('===== Sparse map approximation =====')
+fprintf('Map component:')
+for dk = 1:d
+    fprintf('%d ', dk);
+    if dk==1
+        fixed_mset = FixedMultiIndexSet(1,totalOrder);
+        S = CreateComponent(fixed_mset,opts);
+        Xtrain = X(dk,:);
+        Xtestk = Xtest(dk,:);
+    elseif dk==2
+        fixed_mset = FixedMultiIndexSet(1,maxOrder);
+        S = CreateComponent(fixed_mset,opts);
+        Xtrain = X(dk,:);
+        Xtestk = Xtest(dk,:);
+    elseif dk==3
+        fixed_mset = FixedMultiIndexSet(dk,totalOrder);
+        S = CreateComponent(fixed_mset,opts);
+        Xtrain = X(1:dk,:);
+        Xtestk = Xtest(1:dk,:);
+    else
+        multis=zeros(mset_to.Size(),dk);
+        for s=1:mset_to.Size()
+            multis_to_mt = mset_to{s};
+            multis_to = multis_to_mt.Vector();
+            multis(s,1:2)=multis_to(1:2);
+            multis(s,end-1:end)=multis_to(3:4);
+        end
+        mset = MultiIndexSet(multis);
+        fixed_mset = mset.Fix();
+        S = CreateComponent(fixed_mset,opts);
+        Xtrain = X(1:dk,:);
+        Xtestk = Xtest(1:dk,:);
+    end
+    
+    ListCoeffs_sa(dk)=S.numCoeffs;
 
-% code 
+    % Optimize
+    obj = @(w) objective(w,S,Xtrain);
+    w0 = S.Coeffs();
+    options = optimoptions('fminunc','SpecifyObjectiveGradient', true, 'Display', 'none');
+    [~] = fminunc(obj, w0, options);
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code
+    logPdfTM_sa(dk,:) = log_cond_pullback_pdf(S,Xtestk);
+end
 %% 
 % 
 %% Compute KL divergence error
 % Compute joint KL divergence
 
-% code
+% Compute joint KL divergence for sparse map approximation
+KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa);
 %% Compare approximations
 %% KL divergence
 % Compare map approximations
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% Usually increasing map complexity will improve map approximation. However when the number of parameters increases too much compared to the number of samples, computed map overfits the data which lead to worst approximation. This overfitting can be seen in this examples when looking at the total order 2 approximation that slowly loses accuracy when the dimension increases. Total order 2 approximation while performing better than order 1 for low dimension perform worst when dimension is greater than ~27. approximation thatn total order 1 with dimension greater than 27.
-%
-% Using sparse multi-index sets help reduces the increase of parameters when the dimension increases leading to better approximation for all dimensions.
+figure
+hold on
+plot(1:d,KL_to1,'-o')
+plot(1:d,KL_to2,'-o')
+plot(1:d,KL_sa,'-o')
+set(gca, 'YScale', 'log')
+xlabel('d')
+ylabel('$D_{KL}(\pi(\mathbf{x}_t)||S^*\eta)$',Interpreter='latex')
+legend('Total order 1','Total order 2','Sparse MultiIndexSet')
+%% 
+% Usually increasing map complexity will improve map approximation. However 
+% when the number of parameters increases too much compared to the number of samples, 
+% computed map overfits the data which lead to worst approximation. This overfitting 
+% can be seen in this examples when looking at the total order 2 approximation 
+% that slowly loses accuracy when the dimension increases. Total order 2 approximation 
+% while performing better than order 1 for low dimension perform worst when dimension 
+% is greater than ~27. approximation thatn total order 1 with dimension greater 
+% than 27.
+% 
+% 
+% 
+% Using sparse multi-index sets help reduces the increase of parameters when 
+% the dimension increases leading to better approximation for all dimensions.
 %% Map coefficients
 % To complement observations made above, we visualize the number of parameters 
 % (polyniomal coefficients) for each map parameterization.
 
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-
-% code 
-% We can observe the exponential growth of the number coefficients for the total order 2 approximation. Chosen sparse multi-index sets have a fixed number of parameters which become smaller than the number of parameters of the total order 1 approximation when dimension is about 15.
-% Using less parameters help error scaling with the number of dimension but also computation time for the optimization and the computation time when evaluating the transport map.
+figure
+hold on
+plot(1:d,ListCoeffs_to1,'-o')
+plot(1:d,ListCoeffs_to2,'-o')
+plot(1:d,ListCoeffs_sa,'-o')
+xlabel('d')
+ylabel('# coefficients')
+legend('Total order 1','Total order 2','Sparse MultiIndexSet')
+%% 
+% We can observe the exponential growth of the number coefficients for the total 
+% order 2 approximation. Chosen sparse multi-index sets have a fixed number of 
+% parameters which become smaller than the number of parameters of the total order 
+% 1 approximation when dimension is about 15.
+% 
+% Using less parameters help error scaling with the number of dimension but 
+% also computation time for the optimization and the computation time when evaluating 
+% the transport map.
 %% Custom functions needed for this example
 % 
 
@@ -532,7 +334,7 @@ function X = generate_SV_samples(d,N)
     X = [mu;phi];
     if d > 2
         % Sample Z0
-        Z = sqrt(1./(1-phi.^2))*randn(1,N) + mu;
+        Z = sqrt(1./(1-phi.^2)).*randn(1,N) + mu;
         % Sample auto-regressively
         for i=1:d-3
             Zi = mu + phi.*(Z(end,:)-mu)+sigma*randn(1,N);
@@ -586,7 +388,7 @@ end
  function log_pdf=log_cond_pullback_pdf(triMap,x)
     %log-conditonal pullback density
     r = triMap.Evaluate(x);
-    log_pdf = log(mvnpdf(r'))+triMap.LogDeterminant(x)';
+    log_pdf = log(normpdf(r))+triMap.LogDeterminant(x)';
  end 
 %% 
 % 
@@ -614,4 +416,16 @@ if (nargout > 1)
     % Gradient of the negative log-likelihood
     dwL = - sum(grad_ref_of_map_of_x + grad_log_det,2)/num_points;
 end
+end
+%% 
+% 
+
+function KL = compute_joint_KL(logPdfSV,logPdfTM)
+    % compute the KL divergence between true joint density and map
+    % approximation
+    d = size(logPdfSV,1);
+    KL = zeros(1,d);
+    for k=1:d
+        KL(k)=mean(sum(logPdfSV(1:k,:),1)-sum(logPdfTM(1:k,:),1));
+    end
 end
