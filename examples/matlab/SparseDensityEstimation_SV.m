@@ -1,4 +1,4 @@
-matlab.internal.liveeditor.openAndConvert('SparseDensityEstimation_SV.mlx','SparseDensityEstimation_SV.m')
+% matlab.internal.liveeditor.openAndConvert('SparseDensityEstimation_SV.mlx','SparseDensityEstimation_SV.m')
 %% Density estimation with sparse transport maps
 % In this example we demonstrate how MParT can be use to build map with certain 
 % sparse structure in order to characterize high dimensional densities with conditional 
@@ -15,7 +15,7 @@ KokkosInitialize(num_threads);
 %% 
 % Default settings:
 
-sd = 6; rng(sd);
+sd = 3; rng(sd);
 
 set(0,'DefaultLineLineWidth',1.75)
 set(0,'defaultAxesFontSize',12)
@@ -32,13 +32,13 @@ set(0, 'DefaultAxesBox', 'on');
 % 
 % where 
 % 
-% $$$$$$$\mu \sim \mathcal{N}(0,1)$$
+% $$$$
 % 
 % $$$ \phi = 2\frac{\exp(\phi^*)}{1+\exp(\phi^*)}, \,\,\, \phi^* \sim \mathcal{N}(3,1)$$
 % 
 % $$$ Z_0 | \mu, \phi \sim \mathcal{N}\left(\mu,\frac{1}{1-\phi^2}\right)$$
 % 
-% The objective is to characterize the joint density of $$\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T),    
+% The objective is to characterize the joint density of $$\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T),     
 % $$ with $T$ being arbitrarly large. The conditional independence property for 
 % this problem reads
 % 
@@ -63,7 +63,8 @@ Xvisu = generate_SV_samples(d,Nvisu);
 Zvisu = Xvisu(3:end,:);
 
 figure
-plot(Zvisu)
+plot(1:T,Zvisu)
+xlim([1 T])
 xlabel('Days (d)')
 %% 
 % And corresponding realization of hyperparameters
@@ -74,6 +75,7 @@ figure
 hold on
 plot(1:Nvisu,Xvisu(1,:))
 plot(1:Nvisu,Xvisu(2,:))
+xlim([1 Nvisu])
 xlabel('Samples')
 legend('\mu','\phi')
 %% Probability density function
@@ -144,8 +146,9 @@ for dk=1:d
     [~] = fminunc(obj, w0, options);
     logPdfTM_to1(dk,:) = log_cond_pullback_pdf(S,Xtestk);
 end
+fprintf('\n');
 %% Compute KL divergence error
-% Since we know what the true is for problem we can compute the KL divergence 
+% Since we know what the true is for problem we can compute the KL divergence  
 % $D_{KL}(\pi(\mathbf{x}_t)||S^* \eta)$ between the map-induced density and the 
 % true density.
 
@@ -181,6 +184,7 @@ for dk=1:d
 
     logPdfTM_to2(dk,:) = log_cond_pullback_pdf(S,Xtestk);
 end
+fprintf('\n');
 %% 
 % 
 %% Compute KL divergence error
@@ -196,7 +200,7 @@ KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2);
 % From the independence structure mentionned in the problem formulation we have:
 %% 
 % * $\pi(\mu,\phi)=\pi(\mu)\pi(\phi)$, meaning $S_2$ only dependes on $\phi$
-% * $\pi(z_{k-2}|z_{k-3},...,z_{0},\phi,\mu)=\pi(z_{k-2}|z_{k-3},\phi,\mu),\,\,    
+% * $\pi(z_{k-2}|z_{k-3},...,z_{0},\phi,\mu)=\pi(z_{k-2}|z_{k-3},\phi,\mu),\,\,     
 % k>3$, meaning $S_k$, only depends on $z_{k-2}$, $z_{k-3}$ , $\phi$ and $\mu$
 %% 
 % Complexity of map component can also be deducted from problem formulation:
@@ -267,6 +271,7 @@ for dk = 1:d
 
     logPdfTM_sa(dk,:) = log_cond_pullback_pdf(S,Xtestk);
 end
+fprintf('\n');
 %% 
 % 
 %% Compute KL divergence error
@@ -297,8 +302,6 @@ legend('Total order 1','Total order 2','Sparse MultiIndexSet')
 % is greater than ~27. approximation thatn total order 1 with dimension greater 
 % than 27.
 % 
-% 
-% 
 % Using sparse multi-index sets help reduces the increase of parameters when 
 % the dimension increases leading to better approximation for all dimensions.
 %% Map coefficients
@@ -323,7 +326,6 @@ legend('Total order 1','Total order 2','Sparse MultiIndexSet')
 % also computation time for the optimization and the computation time when evaluating 
 % the transport map.
 %% Custom functions needed for this example
-% 
 
 function X = generate_SV_samples(d,N)
     % Sample hyper-parameters
@@ -343,8 +345,6 @@ function X = generate_SV_samples(d,N)
         X = [X;Z];
     end
 end
-%% 
-% 
 
 function logPdf=SV_log_pdf(X)
     %conditional log-pdf for the SV problem
@@ -360,7 +360,7 @@ function logPdf=SV_log_pdf(X)
     % Compute density for phi
     phiRef = log((1+phi)./(1-phi));
     dphiRef = 2./(1-phi.^2);
-    logPdfPhi = normpdf((phiRef)+log(dphiRef),3,1);
+    logPdfPhi = log(normpdf((phiRef),3,1))+log(dphiRef);
     % Add piMu, piPhi to density
     logPdf = [logPdfMu;logPdfPhi];
 
@@ -382,17 +382,11 @@ function logPdf=SV_log_pdf(X)
         end
     end
 end
-%% 
-% 
-
  function log_pdf=log_cond_pullback_pdf(triMap,x)
     %log-conditonal pullback density
     r = triMap.Evaluate(x);
     log_pdf = log(normpdf(r))+triMap.LogDeterminant(x)';
- end 
-%% 
-% 
-
+ end
 function [L,dwL]=objective(coeffs,tri_map,x)
 % Negative log likelihood objective
 num_points = size(x,2);
@@ -417,9 +411,6 @@ if (nargout > 1)
     dwL = - sum(grad_ref_of_map_of_x + grad_log_det,2)/num_points;
 end
 end
-%% 
-% 
-
 function KL = compute_joint_KL(logPdfSV,logPdfTM)
     % compute the KL divergence between true joint density and map
     % approximation
