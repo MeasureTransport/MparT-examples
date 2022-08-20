@@ -98,8 +98,8 @@ Xvisu = generate_SV_samples(d, Nvisu)
 Zvisu = Xvisu[2:,:]
 
 plt.figure()
-plt.plot(Zvisu);
-plt.xlabel("Days (d)");
+plt.plot(Zvisu)
+plt.xlabel("Days (d)")
 # -
 
 # And corresponding realization of hyperparameters
@@ -121,7 +121,7 @@ plt.show()
 def SV_log_pdf(X):
     
     def normpdf(x,mu,sigma):
-        return  np.exp(-0.5 * ((x - mu)/sigma)**2) / (np.sqrt(2*np.pi) * sigma);
+        return  np.exp(-0.5 * ((x - mu)/sigma)**2) / (np.sqrt(2*np.pi) * sigma)
     
     sigma = 0.25
 
@@ -253,16 +253,16 @@ opts.basisType = mt.BasisTypes.HermiteFunctions
 
 # +
 # Total order 1 approximation
-totalOrder = 1;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs_to1=[];
+totalOrder = 1
+logPdfTM_to1 = np.zeros((d,Ntest))
+ListCoeffs_to1=np.zeros((d,))
 for dk in tqdm(range(1,d+1),desc="Map component"):
     fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder)
     S = mt.CreateComponent(fixed_mset,opts)
     Xtrain = X[:dk,:]
     Xtestk = Xtest[:dk,:]
 
-    ListCoeffs_to1.append(S.numCoeffs)
+    ListCoeffs_to1[dk-1]=S.numCoeffs
 
     options={'gtol': 1e-3, 'disp': False}
     res = minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
@@ -271,9 +271,8 @@ for dk in tqdm(range(1,d+1),desc="Map component"):
     eta = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
 
     # Compute log-conditional density at testing samples
-    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,eta,Xtestk)))
+    logPdfTM_to1[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
 
-logPdfTM_to1=logPdfTM[1:,:]
 # -
 
 
@@ -304,16 +303,16 @@ KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
 
 # +
 # Total order 2 approximation
-totalOrder = 2;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs_to2=[];
+totalOrder = 2
+logPdfTM_to2 = np.zeros((d,Ntest))
+ListCoeffs_to2=np.zeros((d,))
 for dk in tqdm(range(1,d+1),desc="Map component"):
     fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder)
     S = mt.CreateComponent(fixed_mset,opts)
     Xtrain = X[:dk,:]
     Xtestk = Xtest[:dk,:]
 
-    ListCoeffs_to2.append(S.numCoeffs)
+    ListCoeffs_to2[dk-1]=S.numCoeffs
 
     options={'gtol': 1e-3, 'disp': False}
     res = minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
@@ -322,9 +321,8 @@ for dk in tqdm(range(1,d+1),desc="Map component"):
     eta = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
 
     # Compute log-conditional density at testing samples
-    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,eta,Xtestk)))
+    logPdfTM_to2[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
 
-logPdfTM_to2=logPdfTM[1:,:]
 # -
 
 
@@ -370,9 +368,9 @@ KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 # #### Optimization
 
 # +
-totalOrder = 2;
-logPdfTM = np.zeros((Ntest,))
-ListCoeffs_sa=[];
+totalOrder = 2
+logPdfTM_sa = np.zeros((d,Ntest))
+ListCoeffs_sa = np.zeros((d,))
 
 # MultiIndexSet for map S_k, k>3
 mset_to= mt.MultiIndexSet.CreateTotalOrder(4,totalOrder,mt.NoneLim()) 
@@ -406,13 +404,13 @@ for dk in tqdm(range(1,d+1),desc="Map component"):
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
 
-    ListCoeffs_sa.append(S.numCoeffs)
+    ListCoeffs_sa[dk-1]=S.numCoeffs
 
     options={'gtol': 1e-3, 'disp': False}
     res = minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     rho = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))    
-    logPdfTM=np.vstack((logPdfTM,log_cond_pullback_pdf(S,rho,Xtestk)))
-logPdfTM_sa=logPdfTM[1:,:]
+    
+    logPdfTM_sa[dk-1,:]=log_cond_pullback_pdf(S,rho,Xtestk)
 # -
 
 # #### Compute KL divergence error
