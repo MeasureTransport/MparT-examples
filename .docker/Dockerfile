@@ -1,4 +1,4 @@
-FROM quay.io/hbonart/mpart_base:latest
+FROM quay.io/measuretransport/mpart_base:latest
 
 USER root 
 WORKDIR /
