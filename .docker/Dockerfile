@@ -23,11 +23,9 @@ ENV LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib \
     KOKKOS_NUM_THREADS=2
 
 RUN cd $HOME/examples/python && \
-    jupytext --set-formats ipynb,py MonotoneLeastSquares.py && \
-    jupyter nbconvert --ExecutePreprocessor.timeout=600 --to notebook --execute MonotoneLeastSquares.ipynb
+    for i in *.py;do jupytext --set-formats ipynb,py $i; done
 
 RUN cd $HOME/examples/python && \
-    jupytext --set-formats ipynb,py StochasticVolatility.py && \
-    jupyter nbconvert --ExecutePreprocessor.timeout=3600 --to notebook --execute StochasticVolatility.ipynb
+    for i in *.ipynb;do jupyter nbconvert --ExecutePreprocessor.timeout=3600 --to notebook --execute $i; done
 
 EXPOSE  8888
