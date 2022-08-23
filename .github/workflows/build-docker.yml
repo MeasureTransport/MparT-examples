@@ -3,7 +3,7 @@ name: build-and-push-docker
 on:
   push:
     branches:
-      - 23-overhaul-docker-image-and-binder
+      - main
 
 jobs:
   build:
