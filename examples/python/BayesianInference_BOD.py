@@ -117,7 +117,7 @@ ax.set_ylabel("BOD");
 
 
 # For this problem, as noise $\mathcal{E}$ is Gaussian and additive, the likelihood function $\pi(\mathbf{y}|\boldsymbol{\theta})$, can be decomposed for each time step as:
-# $$\pi(\mathbf{y}|\boldsymbol{\theta}) = \prod_{t}^{5} \pi(y_t|\boldsymbol{\theta}), $$
+# $$\pi(\mathbf{y}|\boldsymbol{\theta}) = \prod_{t=1}^{5} \pi(y_t|\boldsymbol{\theta}), $$
 # where 
 # $$\pi(\mathbf{y}_t|\boldsymbol{\theta})=\frac{1}{\sqrt{0.002.\pi}}\exp \left(-\frac{1}{0.002} \left(y_t - \mathcal{B}(t)\right)^2 \right), t \in \{1,...,5\}.$$
 
@@ -250,7 +250,7 @@ def grad_obj(coeffs, tri_map, x):
 
 #Draw reference samples to define objective
 N=10000
-Xtrain = np.random.randn(2,N)
+z = np.random.randn(2,N)
 
 # #### Map parametrization
 
@@ -266,7 +266,7 @@ tri_map = mt.CreateTriangular(2,2,total_order,opts)
 # #### Optimization
 
 options={'gtol': 1e-2, 'disp': True}
-res = scipy.optimize.minimize(obj, tri_map.CoeffMap(), args=(tri_map, Xtrain), jac=grad_obj, method='BFGS', options=options)
+res = scipy.optimize.minimize(obj, tri_map.CoeffMap(), args=(tri_map, z), jac=grad_obj, method='BFGS', options=options)
 
 
 # ## Accuracy checks
