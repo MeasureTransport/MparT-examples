@@ -1,0 +1,797 @@
+### A Pluto.jl notebook ###
+# v0.19.9
+
+using Markdown
+using InteractiveUtils
+
+# ╔═╡ baab6a02-23c0-11ed-17dc-a3d99fcc7b58
+# ╠═╡ show_logs = false
+using Pkg; Pkg.add(url="https://github.com/MeasureTransport/MParT.jl")
+
+# ╔═╡ baab6a84-23c0-11ed-3f3b-01e3ad086ae7
+using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, GLMakie
+
+# ╔═╡ baab6b24-23c0-11ed-0602-bdb17d65ca9b
+md"""
+# Density estimation with sparse transport maps
+"""
+
+# ╔═╡ baab6b7e-23c0-11ed-2af3-c9584eeff5fd
+md"""
+In this example we demonstrate how MParT can be use to build map with certain sparse structure in order to characterize high dimensional densities with conditional independence.
+"""
+
+# ╔═╡ baab6b88-23c0-11ed-021d-8d0a20edce42
+md"""
+## Imports
+First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
+"""
+
+# ╔═╡ baab6b9e-23c0-11ed-0b9c-998c41bafb45
+begin
+import numpy as np
+from scipy.optimize import minimize
+import matplotlib.pyplot as plt
+from scipy.stats import multivariate_normal
+from tqdm import tqdm
+
+import os
+os.environ["KOKKOS_NUM_THREADS"] = "8"
+
+import mpart as mt
+print("Kokkos is using", Concurrency(), "threads")
+rcParams["figure.dpi"] = 110
+
+
+end
+
+# ╔═╡ baae2d8c-23c0-11ed-1931-97afb3a3df9f
+begin
+end
+
+# ╔═╡ baae2daa-23c0-11ed-2739-85c0abcd5341
+md"""
+## Stochastic volatility model
+"""
+
+# ╔═╡ baae2dd2-23c0-11ed-00f8-6d0035b69fe4
+md"""
+### Problem description
+
+The problem considered here is a Markov process that describes the volatility on a financial asset overt time. The model depends on two hyperparamters $\mu$ and $\phi$ and state variable $Z_k$ represents log-volatility at times $k=1,...,T$. The log-volatility follows the order-one autoregressive process:
+```math
+Z_{k+1} = \mu + \phi(Z_k-\mu) + \epsilon_k, k>1, 
+```
+where
+```math
+\mu \sim \mathcal{N}(0,1) 
+```
+```math
+ \phi = 2\frac{\exp(\phi^*)}{1+\exp(\phi^*)}, \,\,\, \phi^* \sim \mathcal{N}(3,1)
+```
+```math
+ Z_0 | \mu, \phi \sim \mathcal{N}\left(\mu,\frac{1}{1-\phi^2}\right)
+```
+
+The objective is to characterize the joint density of
+```math
+\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T), 
+```
+with $T$ being arbitrarly large.
+"""
+
+# ╔═╡ baae2eae-23c0-11ed-0fc3-a3c61caa6f21
+md"""
+The conditional independence property for this problem reads
+
+```math
+ \pi(\mathbf{x}_t|\mathbf{x}_{<t}) = \pi(\mathbf{x}_t|\mathbf{x}_{t-1},\mu,\phi)
+```
+
+More details about this problem can be found in [[Baptista et al., 2022]](https://arxiv.org/pdf/2009.10303.pdf).
+"""
+
+# ╔═╡ baae2ed4-23c0-11ed-2dab-4dca84f92e8b
+md"""
+### Sampling
+
+
+"""
+
+# ╔═╡ baae2eea-23c0-11ed-31cc-29625e1c33e0
+md"""
+Drawing samples $(\mu^i,\phi^i,x_0^i,x_1^i,...,x_T^i)$ can be performed by the following function
+"""
+
+# ╔═╡ baae2ef4-23c0-11ed-363f-29c8463b2a72
+begin
+function generate_SV_samples(d,N)
+    # Sample hyper-parameters
+    sigma = 0.25
+    mu = random.randn(1,N)
+    phis = 3+random.randn(1,N)
+    phi = 2*exp(phis)/(1+exp(phis))-1
+    X = vstack((mu,phi))
+    if d  .> 2:
+        # Sample Z0
+        Z = sqrt(1/(1-phi .^2))*random.randn(1,N) + mu
+end
+
+# ╔═╡ baae6130-23c0-11ed-24a6-f12ac1a13e2f
+begin
+        # Sample auto-regressively
+        for i in range(d-3)
+            Zi = mu + phi * (Z[-1,:] - mu)+sigma*random.randn(1,N)
+            Z = vstack((Z,Zi))
+end
+
+# ╔═╡ baae75b2-23c0-11ed-1043-33cce36b2b52
+begin
+        X = vstack((X,Z))
+    X
+end
+end
+
+# ╔═╡ baae8e76-23c0-11ed-2d2a-5362b2d87ed0
+begin
+end
+
+# ╔═╡ baae8e88-23c0-11ed-2ea4-6d63a48fb345
+md"""
+Set dimension of the problem:
+"""
+
+# ╔═╡ baae8ea8-23c0-11ed-3cd5-e514c1a42f57
+begin
+T = 30 #number of time steps including initial condition
+d = T+2
+end
+
+# ╔═╡ baae9894-23c0-11ed-1f4b-dbaa5d0557d2
+md"""
+Few realizations of the process look like
+"""
+
+# ╔═╡ baae98a8-23c0-11ed-271a-f12d2cad5514
+begin
+Nvisu = 10 #Number of samples
+Xvisu = generate_SV_samples(d, Nvisu)
+
+Zvisu = Xvisu[2:,:]
+
+fig1 = Figure()
+ax1 = Axis(fig1[1,1])
+lines!(ax1, Zvisu)
+scatter!(ax1, Zvisu)
+ax1.xlabel = "Days (d)"
+end
+
+# ╔═╡ baaec164-23c0-11ed-038f-ef96b9369edf
+begin
+end
+
+# ╔═╡ baaec170-23c0-11ed-3433-99cd648f9917
+md"""
+And corresponding realization of hyperparameters
+"""
+
+# ╔═╡ baaec184-23c0-11ed-1632-6152101b3a8a
+begin
+hyper_params = Xvisu[:2,:]
+fig2 = Figure()
+ax2 = Axis(fig2[1,1])
+lines!(ax2, range(1,Nvisu+1),Xvisu[1,:],label="$\mu$")
+scatter!(ax2, range(1,Nvisu+1),Xvisu[1,:],label="$\mu$")
+lines!(ax2, range(1,Nvisu+1),Xvisu[2,:],label="$\phi$")
+scatter!(ax2, range(1,Nvisu+1),Xvisu[2,:],label="$\phi$")
+ax2.xlabel = "Samples"
+axislegend()
+fig2
+end
+
+# ╔═╡ baaee574-23c0-11ed-2be1-873a26f087f7
+begin
+end
+
+# ╔═╡ baaee57e-23c0-11ed-36ca-77d6124cb674
+md"""
+### Probability density function
+
+"""
+
+# ╔═╡ baaee59e-23c0-11ed-3509-c9d5d65b9acb
+md"""
+The exact log-conditional densities used to define joint density $\pi(\mathbf{x}_T)$ are defined by the following function:
+"""
+
+# ╔═╡ baaee5a6-23c0-11ed-10b3-b7ea3dd18770
+begin
+function SV_log_pdf(X)
+
+    function normpdf(x,mu,sigma)
+         exp(-0.5 * ((x - mu)/sigma) .^2) / (sqrt(2*pi) * sigma)
+end
+
+    sigma = 0.25
+
+    # Extract variables mu, phi and states
+    mu = X[0,:]
+    phi = X[1,:]
+    Z = X[2:,:]
+
+    # Compute density for mu
+    piMu = MvNormal(zeros(1),I(1))
+    logPdfMu = piMu.logpdf(mu)
+    # Compute density for phi
+    phiRef = log((1+phi)/(1-phi))
+    dphiRef = 2/(1-phi .^2)
+    piPhi = MvNormal(3*ones(1),I(1))
+    logPdfPhi = piPhi.logpdf(phiRef)+log(dphiRef)
+    # Add piMu, piPhi to density
+    logPdf = vstack((logPdfMu,logPdfPhi))
+
+    # Number of time steps
+    dz = size(Z,0)
+    if dz  .> 0:
+        # Conditonal density for Z_0
+        muZ0 = mu
+        stdZ0 = sqrt(1/(1-phi .^2))
+        logPdfZ0 = log(normpdf(Z[0,:],muZ0,stdZ0))
+        logPdf = vstack((logPdf,logPdfZ0))
+
+        # Compute auto-regressive conditional densities for Z_i|Z_{1i-1}
+        for i in range(1,dz)
+            meanZi = mu + phi * (Z[i-1,:]-mu)
+            stdZi = sigma
+            logPdfZi = log(normpdf(Z[i,:],meanZi,stdZi))
+            logPdf = vstack((logPdf,logPdfZi))
+    logPdf
+end
+end
+
+# ╔═╡ baafaf68-23c0-11ed-2af4-0757429eeeae
+begin
+end
+
+# ╔═╡ baafaf7c-23c0-11ed-3d4f-417daa259af1
+md"""
+## Transport map training
+"""
+
+# ╔═╡ baafaf9a-23c0-11ed-0aaa-5158f5057c23
+md"""
+In the following we optimize each map component $S_k$, $k \in \{1,...,T+2\}$:
+"""
+
+# ╔═╡ baafafa6-23c0-11ed-1329-e3c1800b566c
+md"""
+* For $k=1$, map $S_1$ characterize marginal density $\pi(\mu)$
+* For $k=2$, map $S_2$ characterize conditional density $\pi(\phi|\mu)$
+* For $k=3$, map $S_3$ characterize conditional density $\pi(z_0|\phi,\mu)$
+* For $k>3$, map $S_k$ characterize conditional density $\pi(z_{k-2}|z_{k-3},\phi,\mu)$
+"""
+
+# ╔═╡ baafafc2-23c0-11ed-0ab0-1f8eac46d349
+md"""
+Definition of log-conditional density from map component $S_k$
+"""
+
+# ╔═╡ baafafcc-23c0-11ed-2dd3-b56cfcbe5f31
+begin
+function log_cond_pullback_pdf(triMap,eta,x)
+    r = Evaluate(triMap, x)
+    log_pdf = eta.logpdf(r.T)+triMap.LogDeterminant(x)
+    log_pdf
+end
+end
+
+# ╔═╡ baafc3c2-23c0-11ed-20ac-179c75bd3038
+begin
+end
+
+# ╔═╡ baafc3cc-23c0-11ed-04e4-bd608afe616f
+md"""
+### Generating training and testing samples
+"""
+
+# ╔═╡ baafc3e0-23c0-11ed-12ea-1bbacb622ad0
+md"""
+From training samples generated with the known function we compare accuracy of the transport map induced density using different parameterization and a limited number of training samples.
+"""
+
+# ╔═╡ baafc3ea-23c0-11ed-26b4-a1adec224fc3
+begin
+N = 2000 #Number of training samples
+X = generate_SV_samples(d, N)
+
+Ntest = 5000 # Number of testing samples
+Xtest = generate_SV_samples(d,Ntest)
+
+
+end
+
+# ╔═╡ baaff22a-23c0-11ed-03da-21401c5ff880
+begin
+end
+
+# ╔═╡ baaff23e-23c0-11ed-3de6-c31ab40e44eb
+md"""
+### Objective function and gradient
+"""
+
+# ╔═╡ baaff252-23c0-11ed-2fb1-dbfaf5dcca3f
+md"""
+We use the minimization of negative log-likelihood to optimize map components.
+"""
+
+# ╔═╡ baaff25c-23c0-11ed-22dd-63ed96e978a8
+md"""
+For map component $k$, the objective function is given by
+
+```math
+J_k(\mathbf{w}_k) = - \frac{1}{N}\sum_{i=1}^N \left( \log\eta\left(S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right) + \log \frac{\partial S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial x_k}\right)
+```
+"""
+
+# ╔═╡ baaff2b6-23c0-11ed-21d0-1fc03d600f47
+md"""
+and corresponding gradient
+```math
+\nabla_{\mathbf{w}_k}J_k(\mathbf{w}_k) = - \frac{1}{N}\sum_{i=1}^N \left(\left[\nabla_{\mathbf{w}_k}S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right]^T \nabla_\mathbf{r}\log \eta \left(S_k
+(\mathbf{x}_{1:k}^i;\mathbf{w}_k)\right) - \frac{\partial \nabla_{\mathbf{w}_k}S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial x_k} \left[\frac{\partial S_k(\mathbf{x}_{1:k}^i;\mathbf{w}_k)}{\partial x_k}\right]^{-1}\right),
+```
+"""
+
+# ╔═╡ baaff2e8-23c0-11ed-0446-e5ad028d990a
+begin
+### Negative log likelihood objective
+function obj(coeffs,p)
+	tri_map,x = p
+    """ Evaluates the log-likelihood of the samples using the map-induced density. """
+    num_points = size(x,1)
+    SetCoeffs(tri_map, coeffs)
+
+    # Compute the map-induced density at each point
+    map_of_x = Evaluate(tri_map, x)
+
+    rho = MvNormal(zeros(tri_map.outputDim),I(tri_map.outputDim))
+    rho_of_map_of_x = rho.logpdf(map_of_x.T)
+    log_det = tri_map.LogDeterminant(x)
+
+    # Return the negative log-likelihood of the entire dataset
+    -sum(rho_of_map_of_x + log_det)/num_points
+end
+
+function grad_obj(coeffs,p)
+	tri_map, x = p
+    """ Returns the gradient of the log-likelihood objective wrt the map parameters. """
+    num_points = size(x,1)
+    SetCoeffs(tri_map, coeffs)
+
+    # Evaluate the map
+    map_of_x = Evaluate(tri_map, x)
+
+    # Now compute the inner product of the map jacobian (\nabla_w S) and the gradient (which is just -S(x) here)
+    grad_rho_of_map_of_x = CoeffGrad(-tri_map, x, map_of_x)
+
+    # Get the gradient of the log determinant with respect to the map coefficients
+    grad_log_det = tri_map.LogDeterminantCoeffGrad(x)
+
+    -sum(grad_rho_of_map_of_x + grad_log_det, 1)/num_points
+end
+
+
+end
+
+# ╔═╡ bab09ac2-23c0-11ed-3369-89ebec8b1eca
+begin
+end
+
+# ╔═╡ bab09ad4-23c0-11ed-0a08-f5ecbececd44
+md"""
+### Training total order 1 map
+"""
+
+# ╔═╡ bab09aea-23c0-11ed-3f03-3d18da7b26de
+md"""
+Here we use a total order 1 multivariate expansion to parameterize each component $S_k$, $k \in \{1,...,T+2\}$.
+"""
+
+# ╔═╡ bab09afe-23c0-11ed-25ce-abbc835d5a74
+begin
+opts = MapOptions()
+opts.basisType = BasisTypes.HermiteFunctions
+end
+
+# ╔═╡ bab0a622-23c0-11ed-30f0-eb74b2ff4a55
+md"""
+#### Optimization
+"""
+
+# ╔═╡ bab0a634-23c0-11ed-3d4b-2d171a1a4c29
+begin
+# Total order 1 approximation
+totalOrder = 1
+logPdfTM_to1 = zeros((d,Ntest))
+ListCoeffs_to1=zeros((d))
+for dk in tqdm(range(1,d+1),desc="Map component")
+    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
+    S = CreateComponent(fixed_mset,opts)
+    Xtrain = X[:dk,:]
+    Xtestk = Xtest[:dk,:]
+
+    ListCoeffs_to1[dk-1]=S.numCoeffs
+
+    options={"gtol": 1e-3, "disp": False}
+    res = minimize(obj, CoeffMap(S), args=(S, Xtrain), jac=grad_obj, method="BFGS", options=options)
+
+    # Reference density
+    eta = MvNormal(zeros(S.outputDim),I(S.outputDim))
+
+    # Compute log-conditional density at testing samples
+    logPdfTM_to1[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
+
+end
+
+# ╔═╡ bab1198e-23c0-11ed-18f7-2b7881701d45
+begin
+end
+
+# ╔═╡ bab119a2-23c0-11ed-2e5a-fd95d0a8d55b
+begin
+end
+
+# ╔═╡ bab119ac-23c0-11ed-0500-5f3f9c280dc8
+md"""
+#### Compute KL divergence error
+
+Since we know what the true is for problem we can compute the KL divergence $D_{KL}(\pi(\mathbf{x}_t)||S^\sharp \eta)$ between the map-induced density and the true density.
+"""
+
+# ╔═╡ bab119ca-23c0-11ed-3a4a-853addf54fa2
+begin
+logPdfSV = SV_log_pdf(Xtest) # true log-pdf
+
+function compute_joint_KL(logPdfSV,logPdfTM)
+    KL = zeros((logPdfSsize(V,0)))
+    for k in range(1,d+1)
+        KL[k-1]=mean(sum(logPdfSV[:k,:],0)-sum(logPdfTM[:k,:],0))
+    KL
+end
+
+# Compute joint KL divergence for total order 1 approximation
+KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
+end
+
+# ╔═╡ bab14be8-23c0-11ed-2d16-ebaefbcdc69e
+begin
+end
+
+# ╔═╡ bab14bfc-23c0-11ed-222a-29a7836ec165
+md"""
+### Training total order 2 map
+"""
+
+# ╔═╡ bab14c10-23c0-11ed-3464-e95c62236eaa
+md"""
+Here we use a total order 2 multivariate expansion to parameterize each component $S_k$, $k \in \{1,...,T+2\}$.
+"""
+
+# ╔═╡ bab14c1a-23c0-11ed-3524-7b984a8f1ab2
+md"""
+#### Optimization
+
+This step can take few minutes depending on the number of time steps set at the definition of the problem.
+"""
+
+# ╔═╡ bab14c30-23c0-11ed-259c-adc821842c14
+begin
+# Total order 2 approximation
+totalOrder = 2
+logPdfTM_to2 = zeros((d,Ntest))
+ListCoeffs_to2=zeros((d))
+for dk in range(1,d+1)
+    fixed_mset= FixedMultiIndexSet(dk,totalOrder)
+    S = CreateComponent(fixed_mset,opts)
+    Xtrain = X[:dk,:]
+    Xtestk = Xtest[:dk,:]
+
+    ListCoeffs_to2[dk-1]=S.numCoeffs
+
+    options={"gtol": 1e-3, "disp": False}
+    res = minimize(obj, CoeffMap(S), args=(S, Xtrain), jac=grad_obj, method="BFGS", options=options)
+
+    # Reference density
+    eta = MvNormal(zeros(S.outputDim),I(S.outputDim))
+
+    # Compute log-conditional density at testing samples
+    logPdfTM_to2[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
+
+end
+
+# ╔═╡ bab1b5c4-23c0-11ed-3710-01063944d316
+begin
+end
+
+# ╔═╡ bab1b5d8-23c0-11ed-2758-25f1ca11270b
+begin
+end
+
+# ╔═╡ bab1b5e2-23c0-11ed-25c7-f3af826473a8
+md"""
+#### Compute KL divergence error
+"""
+
+# ╔═╡ bab1b5f6-23c0-11ed-0542-c595661d7cee
+md"""
+Compute joint KL divergence for total order 2 approximation
+L_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
+"""
+
+# ╔═╡ bab1b600-23c0-11ed-3905-e3dcb5ad077d
+md"""
+### Training sparse map
+"""
+
+# ╔═╡ bab1b60a-23c0-11ed-3713-df191e151f37
+md"""
+Here we use the prior knowledge of the conditional independence property of the target density $\pi(\mathbf{x}_T)$ to parameterize map components with a map structure.
+"""
+
+# ╔═╡ bab1b620-23c0-11ed-203f-7b4c47ef1456
+md"""
+#### Prior knowledge used to parameterize map components
+"""
+
+# ╔═╡ bab1b628-23c0-11ed-2743-6f1fa090a6c4
+md"""
+From the independence structure mentionned in the problem formulation we have:
+
+
+*   $\pi(\mu,\phi)=\pi(\mu)\pi(\phi)$, meaning $S_2$ only dependes on $\phi$
+*   $\pi(z_{k-2}|z_{k-3},...,z_{0},\phi,\mu)=\pi(z_{k-2}|z_{k-3},\phi,\mu),\,\, k>3$,  meaning $S_k$, only depends on $z_{k-2}$,$z_{k-3}$, $\phi$ and $\mu$
+
+
+"""
+
+# ╔═╡ bab1b646-23c0-11ed-227f-3fb9a20b4aac
+md"""
+Complexity of map component can also be deducted from problem formulation:
+
+
+*   $\pi(\mu)$ being a normal distribution, $S_1$ should be of order 1.
+*  $\pi(\phi)$ is non-Gaussian such that $S_2$ should be nonlinear.
+*  $\pi(z_{k-2}|z_{k-3},\phi,\mu)$ can be represented by a total order 2 parameterization due to the linear autoregressive model.
+
+
+
+"""
+
+# ╔═╡ bab1b664-23c0-11ed-0451-07ce0324b14c
+md"""
+Hence multi-index sets used for this problem are:
+
+
+*   $k=1$: 1D expansion of order $\geq$ 1
+*   $k=2$: 1D expansion (depending on last component) of high order $>1$
+*   $k=3$: 3D expansion of total order 2
+*   $k>3$: 4D expansion (depending on first two and last two components) of total order 2
+
+
+"""
+
+# ╔═╡ bab1b680-23c0-11ed-2152-832d4b0fa3eb
+md"""
+#### Optimization
+"""
+
+# ╔═╡ bab1b68c-23c0-11ed-14e1-61af4bbb8d69
+begin
+totalOrder = 2
+logPdfTM_sa = zeros((d,Ntest))
+ListCoeffs_sa = zeros((d))
+
+# MultiIndexSet for map S_k, k .>3
+mset_to= MultiIndexSet.CreateTotalOrder(4,totalOrder,NoneLim())
+
+maxOrder=9 # order for map S_2
+for dk in range(1,d+1)
+    if dk == 1:
+        fixed_mset= FixedMultiIndexSet(1,totalOrder)
+        S = CreateComponent(fixed_mset,opts)
+        Xtrain = X[dk-1,reshape(:], 1,-1)
+        Xtestk = Xtest[dk-1,reshape(:], 1,-1)
+    elif dk == 2:
+        fixed_mset= FixedMultiIndexSet(1,maxOrder)
+        S = CreateComponent(fixed_mset,opts)
+        Xtrain = X[dk-1,reshape(:], 1,-1)
+        Xtestk = Xtest[dk-1,reshape(:], 1,-1)
+    elif dk==3:
+        fixed_mset= FixedMultiIndexSet(dk,totalOrder)
+        S = CreateComponent(fixed_mset,opts)
+        Xtrain = X[:dk,:]
+        Xtestk = Xtest[:dk,:]
+    else:
+        multis=zeros((mset_to.Size(),dk))
+        for s in range(mset_to.Size())
+            multis_to = array([mset_to[s].tolist()])
+            multis[s,:2]=multis_to[0,:2]
+            multis[s,-2:]=multis_to[0,-2:]
+        mset = MultiIndexSet(multis)
+        fixed_mset = Fix(mset, True)
+        S = CreateComponent(fixed_mset,opts)
+        Xtrain = X[:dk,:]
+        Xtestk = Xtest[:dk,:]
+
+    ListCoeffs_sa[dk-1]=S.numCoeffs
+
+    options={"gtol": 1e-3, "disp": False}
+    res = minimize(obj, CoeffMap(S), args=(S, Xtrain), jac=grad_obj, method="BFGS", options=options)
+    rho = MvNormal(zeros(S.outputDim),I(S.outputDim))
+
+    logPdfTM_sa[dk-1,:]=log_cond_pullback_pdf(S,rho,Xtestk)
+end
+
+# ╔═╡ bab29f54-23c0-11ed-3ef4-899767f8ce2f
+begin
+end
+
+# ╔═╡ bab29f66-23c0-11ed-3084-19c7dc638ed3
+md"""
+#### Compute KL divergence error
+"""
+
+# ╔═╡ bab29f82-23c0-11ed-1a3e-bf83f75edd2e
+md"""
+Compute joint KL divergence
+L_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
+"""
+
+# ╔═╡ bab29f8e-23c0-11ed-2985-3de6202610b6
+md"""
+## Compare approximations
+"""
+
+# ╔═╡ bab29fa2-23c0-11ed-01f3-f30349beabf6
+md"""
+### KL divergence
+"""
+
+# ╔═╡ bab29fac-23c0-11ed-07aa-1b23ad5890e4
+md"""
+Compare map approximations
+ig, ax = plt.subplots()
+x.plot(range(1,d+1),KL_to1,'-o',label='Total order 1')
+x.plot(range(1,d+1),KL_to2,'-o',label='Total order 2')
+x.plot(range(1,d+1),KL_sa,'-o',label='Sparse MultiIndexSet')
+x.set_yscale('log')
+x.set_xlabel('d')
+x.set_ylabel('$D_{KL}(\pi(\mathbf{x}_t)||S^\sharp \eta)$')
+lt.legend()
+lt.show()
+"""
+
+# ╔═╡ bab29fd4-23c0-11ed-1a95-39be3993e2aa
+md"""
+Usually increasing map complexity will improve map approximation. However when the number of parameters increases too much compared to the number of samples, computed map overfits the data which lead to worst approximation. This overfitting can be seen in this examples when looking at the total order 2 approximation that rapidly loses accuracy when the dimension increases.
+
+Using sparse multi-index sets help reduces the increase of parameters when the dimension increases leading to better approximation for all dimensions.
+"""
+
+# ╔═╡ bab29fe6-23c0-11ed-37ea-41174441ffac
+md"""
+### Map coefficients
+"""
+
+# ╔═╡ bab29ffc-23c0-11ed-2f20-fb9e6d6b2a0a
+md"""
+To complement observations made above, we visualize the number of parameters (polyniomal coefficients) for each map parameterization.
+"""
+
+# ╔═╡ bab2a006-23c0-11ed-327c-7bda74a8d39c
+begin
+fig, ax =subplots()
+ax.lines!(ax2, range(1,d+1),ListCoeffs_to1,"-o",label="Total order 1")
+scatter!(ax2, range(1,d+1),ListCoeffs_to1,"-o",label="Total order 1")
+ax.lines!(ax2, range(1,d+1),ListCoeffs_to2,"-o",label="Total order 2")
+scatter!(ax2, range(1,d+1),ListCoeffs_to2,"-o",label="Total order 2")
+ax.lines!(ax2, range(1,d+1),ListCoeffs_sa,"-o",label="Sparse MultiIndexSet")
+scatter!(ax2, range(1,d+1),ListCoeffs_sa,"-o",label="Sparse MultiIndexSet")
+ax.set_ax2.xlabel = "d"
+ax.set_ax2.ylabel = "# coefficients"
+axislegend()
+fig2
+end
+
+# ╔═╡ bab2c8b8-23c0-11ed-00ac-0fafd36562d9
+md"""
+We can observe the exponential growth of the number coefficients for the total order 2 approximation. Chosen sparse multi-index sets have a fixed number of parameters which become smaller than the number of parameters of the total order 1 approximation when dimension is 15.
+"""
+
+# ╔═╡ bab2c8ce-23c0-11ed-07f7-cf18b49910fc
+md"""
+Using less parameters helps error scaling with dimension but aslo helps reducing computation time for the optimization and the evaluation the transport maps.
+
+# ╔═╡ Cell order:
+# ╠═baab6a02-23c0-11ed-17dc-a3d99fcc7b58
+# ╠═baab6a84-23c0-11ed-3f3b-01e3ad086ae7
+# ╠═baab6b24-23c0-11ed-0602-bdb17d65ca9b
+# ╠═baab6b7e-23c0-11ed-2af3-c9584eeff5fd
+# ╠═baab6b88-23c0-11ed-021d-8d0a20edce42
+# ╠═baab6b9e-23c0-11ed-0b9c-998c41bafb45
+# ╠═baae2d8c-23c0-11ed-1931-97afb3a3df9f
+# ╠═baae2daa-23c0-11ed-2739-85c0abcd5341
+# ╠═baae2dd2-23c0-11ed-00f8-6d0035b69fe4
+# ╠═baae2eae-23c0-11ed-0fc3-a3c61caa6f21
+# ╠═baae2ed4-23c0-11ed-2dab-4dca84f92e8b
+# ╠═baae2eea-23c0-11ed-31cc-29625e1c33e0
+# ╠═baae2ef4-23c0-11ed-363f-29c8463b2a72
+# ╠═baae6130-23c0-11ed-24a6-f12ac1a13e2f
+# ╠═baae75b2-23c0-11ed-1043-33cce36b2b52
+# ╠═baae8e76-23c0-11ed-2d2a-5362b2d87ed0
+# ╠═baae8e88-23c0-11ed-2ea4-6d63a48fb345
+# ╠═baae8ea8-23c0-11ed-3cd5-e514c1a42f57
+# ╠═baae9894-23c0-11ed-1f4b-dbaa5d0557d2
+# ╠═baae98a8-23c0-11ed-271a-f12d2cad5514
+# ╠═baaec164-23c0-11ed-038f-ef96b9369edf
+# ╠═baaec170-23c0-11ed-3433-99cd648f9917
+# ╠═baaec184-23c0-11ed-1632-6152101b3a8a
+# ╠═baaee574-23c0-11ed-2be1-873a26f087f7
+# ╠═baaee57e-23c0-11ed-36ca-77d6124cb674
+# ╠═baaee59e-23c0-11ed-3509-c9d5d65b9acb
+# ╠═baaee5a6-23c0-11ed-10b3-b7ea3dd18770
+# ╠═baafaf68-23c0-11ed-2af4-0757429eeeae
+# ╠═baafaf7c-23c0-11ed-3d4f-417daa259af1
+# ╠═baafaf9a-23c0-11ed-0aaa-5158f5057c23
+# ╠═baafafa6-23c0-11ed-1329-e3c1800b566c
+# ╠═baafafc2-23c0-11ed-0ab0-1f8eac46d349
+# ╠═baafafcc-23c0-11ed-2dd3-b56cfcbe5f31
+# ╠═baafc3c2-23c0-11ed-20ac-179c75bd3038
+# ╠═baafc3cc-23c0-11ed-04e4-bd608afe616f
+# ╠═baafc3e0-23c0-11ed-12ea-1bbacb622ad0
+# ╠═baafc3ea-23c0-11ed-26b4-a1adec224fc3
+# ╠═baaff22a-23c0-11ed-03da-21401c5ff880
+# ╠═baaff23e-23c0-11ed-3de6-c31ab40e44eb
+# ╠═baaff252-23c0-11ed-2fb1-dbfaf5dcca3f
+# ╠═baaff25c-23c0-11ed-22dd-63ed96e978a8
+# ╠═baaff2b6-23c0-11ed-21d0-1fc03d600f47
+# ╠═baaff2e8-23c0-11ed-0446-e5ad028d990a
+# ╠═bab09ac2-23c0-11ed-3369-89ebec8b1eca
+# ╠═bab09ad4-23c0-11ed-0a08-f5ecbececd44
+# ╠═bab09aea-23c0-11ed-3f03-3d18da7b26de
+# ╠═bab09afe-23c0-11ed-25ce-abbc835d5a74
+# ╠═bab0a622-23c0-11ed-30f0-eb74b2ff4a55
+# ╠═bab0a634-23c0-11ed-3d4b-2d171a1a4c29
+# ╠═bab1198e-23c0-11ed-18f7-2b7881701d45
+# ╠═bab119a2-23c0-11ed-2e5a-fd95d0a8d55b
+# ╠═bab119ac-23c0-11ed-0500-5f3f9c280dc8
+# ╠═bab119ca-23c0-11ed-3a4a-853addf54fa2
+# ╠═bab14be8-23c0-11ed-2d16-ebaefbcdc69e
+# ╠═bab14bfc-23c0-11ed-222a-29a7836ec165
+# ╠═bab14c10-23c0-11ed-3464-e95c62236eaa
+# ╠═bab14c1a-23c0-11ed-3524-7b984a8f1ab2
+# ╠═bab14c30-23c0-11ed-259c-adc821842c14
+# ╠═bab1b5c4-23c0-11ed-3710-01063944d316
+# ╠═bab1b5d8-23c0-11ed-2758-25f1ca11270b
+# ╠═bab1b5e2-23c0-11ed-25c7-f3af826473a8
+# ╠═bab1b5f6-23c0-11ed-0542-c595661d7cee
+# ╠═bab1b600-23c0-11ed-3905-e3dcb5ad077d
+# ╠═bab1b60a-23c0-11ed-3713-df191e151f37
+# ╠═bab1b620-23c0-11ed-203f-7b4c47ef1456
+# ╠═bab1b628-23c0-11ed-2743-6f1fa090a6c4
+# ╠═bab1b646-23c0-11ed-227f-3fb9a20b4aac
+# ╠═bab1b664-23c0-11ed-0451-07ce0324b14c
+# ╠═bab1b680-23c0-11ed-2152-832d4b0fa3eb
+# ╠═bab1b68c-23c0-11ed-14e1-61af4bbb8d69
+# ╠═bab29f54-23c0-11ed-3ef4-899767f8ce2f
+# ╠═bab29f66-23c0-11ed-3084-19c7dc638ed3
+# ╠═bab29f82-23c0-11ed-1a3e-bf83f75edd2e
+# ╠═bab29f8e-23c0-11ed-2985-3de6202610b6
+# ╠═bab29fa2-23c0-11ed-01f3-f30349beabf6
+# ╠═bab29fac-23c0-11ed-07aa-1b23ad5890e4
+# ╠═bab29fd4-23c0-11ed-1a95-39be3993e2aa
+# ╠═bab29fe6-23c0-11ed-37ea-41174441ffac
+# ╠═bab29ffc-23c0-11ed-2f20-fb9e6d6b2a0a
+# ╠═bab2a006-23c0-11ed-327c-7bda74a8d39c
+# ╠═bab2c8b8-23c0-11ed-00ac-0fafd36562d9
+# ╠═bab2c8ce-23c0-11ed-07f7-cf18b49910fc

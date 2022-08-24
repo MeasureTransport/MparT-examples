@@ -4,9 +4,17 @@ stack = Dict(:tex => false, :plotnum => 0)
 
 function cellType(cell_type, line)
     if !isnothing(cell_type)
-        return cell_type
+        if cell_type != :codeblock
+            return cell_type
+        end
     end
-    line == "# +" || !startswith(line, '#') ? :code : :comment
+    if line == "# +"
+        return :code
+    elseif !startswith(line, "#")
+        return :codeblock
+    else
+        return :comment
+    end
 end
 
 function newCell(cells, output, cell_type)
@@ -15,7 +23,7 @@ function newCell(cells, output, cell_type)
     write(output, "# ╔═╡ $cell_id\n")
     if cell_type == :comment
         write(output, "md\"\"\"\n")
-    elseif cell_type == :code
+    elseif cell_type == :code || cell_type == :codeblock
         write(output, "begin\n")
     end
 end
@@ -73,7 +81,7 @@ function parseCode(line)
         "np", "mt", "plt"
     ]
     fcns = [
-        # ("linspace","range")
+
     ]
     member_fcns = [
         ("flatten","vec"), ("reshape","reshape"), ("fix","Fix"),
@@ -81,14 +89,18 @@ function parseCode(line)
     ]
     regexes = [
         r"random.randn\(([^,\)]*?)\)([\.\s\)]*)" => s"randn(1,\1)\2", # randn(n) --> randn(1,n)
+        r"multivariate_normal\((.*)\)" => s"MvNormal(\1)", # MvNormal translation
+        r"eye\((.*?)\)" => s"I(\1)", # eye translation
         r"linspace\((.*?)\)" => s"range(\1)", # linspace --> range
         r"\*\*" => s" .^", # exponentiation
         r">" => s" .>", # Broadcast >
-        r"<" => s" .<", # Broadcast < 
+        r"<" => s" .<", # Broadcast <
         r"\'" => s"\"", # single quotes to double quotes
         r",\s*\)" => s")", # remove trailing commas
         r"(\S)\.shape\[(\d)\]" => s"size(\1,\2)", # Calculate shape appropriately
-        r"def ([^\)]*)\(([^,]*),\s*([^\)]*)\):" => s"function \1(\2,p)\n\t\3 = p", # Start a function appropriately
+        r"def (.*obj.*?)\(([^,]*),\s*([^\)]*)\):" => s"function \1(\2,p)\n\t\3 = p", # Start a function appropriately
+        r"def (.*?)\((.*)\):" => s"function \1(\2)", # Add non-objective function
+        r"for (.*):" => s"for \1", # Add for loop
         r"return (.*)" => s"\1\nend", # End a function appropriately
         r"^(\S*)\s*=\s*(.*?)\[None,:\]" => s"\1 = \2\n\1 = collect(reshape(\1, 1, length(\1)))", # Ensuring this reshape idiom behaves appropriately
         r"(\S*)\s*=\s*(.*)\.reshape\(-1,1\)(.*)" => s"\1 = \2\n\1 = reshape(\1,length(\1),1)\3", # Ensuring the reshape behaves appropriately
@@ -156,12 +168,7 @@ function jupytext_to_julia(input, output)
     writeHeader(cells, output)
     readline(input)
     cell_type = nothing
-    skipline = false
     for x in eachline(input)
-        if skipline
-            skipline = false
-            continue
-        end
         cell_type_old = cell_type
         cell_type = cellType(cell_type_old, x)
         if cell_type != cell_type_old
@@ -172,7 +179,13 @@ function jupytext_to_julia(input, output)
             if x == "# -"
                 cell_type = nothing
                 write(output, "end\n")
-                skipline = true
+            else
+                write(output, parseCode(x))
+            end
+        elseif cell_type == :codeblock
+            if length(x) < 1
+                cell_type = nothing
+                write(output, "end\n")
             else
                 write(output, parseCode(x))
             end
