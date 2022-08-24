@@ -1,15 +1,19 @@
 ### A Pluto.jl notebook ###
-# v0.19.9
+# v0.19.11
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ 954d8538-23bb-11ed-145b-0fad4e80d906
 # ╠═╡ show_logs = false
-using Pkg; Pkg.add(url="https://github.com/MeasureTransport/MParT.jl")
+begin
+using Pkg
+Pkg.add(url="https://github.com/MeasureTransport/MParT.jl")
+Pkg.add(["Distributions", "LinearAlgebra", "Statistics", "Optimization", "OptimizationOptimJL", "CairoMakie", "SpecialFunctions"])
+end
 
 # ╔═╡ 954d857e-23bb-11ed-379f-bf59db6edf0e
-using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, GLMakie
+using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, CairoMakie, SpecialFunctions
 
 # ╔═╡ 954d8600-23bb-11ed-3afb-79985341ba63
 md"""
@@ -26,24 +30,6 @@ md"""
 ## Imports
 First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 """
-
-# ╔═╡ 954d866e-23bb-11ed-1d7e-8930202335d5
-begin
-import numpy as np
-import scipy
-from scipy.optimize import minimize
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-
-import os
-os.environ["KOKKOS_NUM_THREADS"] = "8"
-
-import mpart as mt
-print("Kokkos is using", Concurrency(), "threads")
-rcParams["figure.dpi"] = 110
-
-
-end
 
 # ╔═╡ 955024a2-23bb-11ed-00bf-4b1f8d006e36
 md"""
@@ -117,20 +103,20 @@ Definition of the forward model and gradient with respect to $\mathbf{\theta}$:
 # ╔═╡ 955025f4-23bb-11ed-2332-7b5583ceb8b4
 begin
 function forward_model(p1,p2,t)
-  A = 0.4+0.4*(1+scipy.special.erf(p1/sqrt(2)))
-  B = 0.01+0.15*(1+scipy.special.erf(p2/sqrt(2)))
-  out = A*(1-exp(-B*t))
+  A = 0.4+0.4*(1+erf(p1/sqrt(2)))
+  B = 0.01+0.15*(1+erf(p2/sqrt(2)))
+  out = A*(1-exp.(-B*t))
   out
 end
 
 function grad_x_forward_model(p1,p2,t)
-  A = 0.4+0.4*(1+scipy.special.erf(p1/sqrt(2)))
-  B = 0.01+0.15*(1+scipy.special.erf(p2/sqrt(2)))
+  A = 0.4+0.4*(1+erf(p1/sqrt(2)))
+  B = 0.01+0.15*(1+erf(p2/sqrt(2)))
   dAdx1 = 0.31954*exp(-0.5*p1 .^2)
   dBdx2 = 0.119683*exp(-0.5*p2 .^2)
   dOutdx1 = dAdx1*(1-exp(-B*t))
   dOutdx2 = t*A*dBdx2*exp(-t*B)
-  vstack((dOutdx1,dOutdx2))
+  vcat(dOutdx1,dOutdx2)
 end
 
 
@@ -144,11 +130,13 @@ One simulation of the forward model:
 # ╔═╡ 9550757c-23bb-11ed-163d-0bc0ea8f5239
 begin
 t = range(0,10, 100)
-fig, ax = subplots(1,1)
-ax.lines!(ax0, t, forward_model(1, 1, t))
-scatter!(ax0, t, forward_model(1, 1, t));
-ax.set_ax0.xlabel = "t"
-ax.set_ax0.ylabel = "BOD";
+fig0 = Figure()
+ax0 = Axis(fig0[1,1])
+lines!(ax0, t, forward_model.(1, 1, t))
+scatter!(ax0, t, forward_model.(1, 1, t));
+ax0.xlabel = "t"
+ax0.ylabel = "BOD";
+fig0
 end
 
 # ╔═╡ 955090cc-23bb-11ed-3513-57f02bb737ea
@@ -171,15 +159,15 @@ Likelihood function and its gradient with respect to parameters:
 # ╔═╡ 95509124-23bb-11ed-0191-cbc0b0146cc7
 begin
 function log_likelihood(std_noise,t,yobs,p1,p2)
-  y = forward_model(p1,p2,t)
-  log_lkl = -log(sqrt(2*pi)*std_noise)-0.5*((y-yobs)/std_noise) .^2
+  y = forward_model.(p1,p2,t)
+  log_lkl = -log.(sqrt(2*pi)*std_noise).-0.5*((y .- yobs)/std_noise) .^2
   log_lkl
 end
 
 function grad_x_log_likelihood(std_noise,t,yobs,p1,p2)
-  y = forward_model(p1,p2,t)
-  dydx = grad_x_forward_model(p1,p2,t)
-  grad_x_lkl = (-1/std_noise .^2)*(y - yobs)*dydx
+  y = forward_model.(p1,p2,t)
+  dydx = grad_x_forward_model.(p1,p2,t)
+  grad_x_lkl = reduce(vcat,(-1/std_noise .^2)*(y .- yobs).*dydx)
   grad_x_lkl
 end
 
@@ -194,21 +182,24 @@ We can then define the unnormalized posterior and its gradient with respect to p
 # ╔═╡ 9550cb94-23bb-11ed-3489-3f3450a778a0
 begin
 function log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,p1,p2)
-  log_prior1 = -log(sqrt(2*pi)*std_prior1)-0.5*(p1/std_prior1) .^2
-  log_prior2 = -log(sqrt(2*pi)*std_prior2)-0.5*(p2/std_prior2) .^2
+  log_prior1 = -log(sqrt(2*pi)*std_prior1).-0.5*(p1/std_prior1) .^2
+  log_prior2 = -log(sqrt(2*pi)*std_prior2).-0.5*(p2/std_prior2) .^2
   log_posterior = log_prior1+log_prior2
-  for k,t in enumerate(list_t)
+  for (k,t) in enumerate(list_t)
     log_posterior += log_likelihood(std_noise,t,list_yobs[k],p1,p2)
+  end
   log_posterior
 end
 
 function grad_x_log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,p1,p2)
   grad_x1_prior = -(1/std_prior1 .^2)*(p1)
   grad_x2_prior = -(1/std_prior2 .^2)*(p2)
-  grad_x_prior = vstack((grad_x1_prior,grad_x2_prior))
+  grad_x_prior = vcat(grad_x1_prior,grad_x2_prior)
   grad_x_log_posterior = grad_x_prior
-  for k,t in enumerate(list_t)
+  @info "" size(grad_x_log_posterior)
+  for (k,t) in enumerate(list_t)
     grad_x_log_posterior += grad_x_log_likelihood(std_noise,t,list_yobs[k],p1,p2)
+  end
   grad_x_log_posterior
 end
 
@@ -224,8 +215,8 @@ We consider the following realization of observation $\mathbf{y}$:
 
 # ╔═╡ 95513804-23bb-11ed-153a-4f9809a0bc9d
 begin
-list_t = array([1,2,3,4,5])
-list_yobs = array([0.18,0.32,0.42,0.49,0.54])
+list_t = [1,2,3,4,5]
+list_yobs = [0.18,0.32,0.42,0.49,0.54]
 
 std_noise = sqrt(1e-3)
 std_prior1 = 1
@@ -242,19 +233,17 @@ begin
 Ngrid = 100
 x = range(-0.5, 1.25, Ngrid)
 y = range(-0.5, 2.5, Ngrid)
-X, Y = meshgrid(x, y)
+X = repeat(x', Ngrid, 1)
+Y = repeat(y, 1, Ngrid)
 
 Z = log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,vec(X),vec(Y))
 Z = exp(reshape(Z, Ngrid,Ngrid))
 
 
-fig, ax = subplots()
-CS = ax.contour(X, Y, Z)
-ax.set_ax0.xlabel = r"$\theta_1$"
-ax.set_ax0.ylabel = r"$\theta_2$"
-fig0
-
-
+fig1 = Figure()
+ax1 = Axis(fig1[1,1], xlabel=L"\theta_1", ylabel=L"\theta_2")
+# CS = contour!(ax1, X, Y, Z)
+fig1
 end
 
 # ╔═╡ 9551a47e-23bb-11ed-0695-979c1f145d52
@@ -296,12 +285,12 @@ where $T$ is the transport map pushing forward the standard normal $\mathcal{N}(
 # ╔═╡ 9551a528-23bb-11ed-0b28-fdca4891dd0e
 begin
 function grad_x_log_target(x)
-  out = grad_x_log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,x[0,:],x[1,:])
+  out = grad_x_log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,x[1,:],x[2,:])
   out
 end
 
 function log_target(x)
-  out = log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,x[0,:],x[1,:])
+  out = log_posterior(std_noise,std_prior1,std_prior2,list_t,list_yobs,x[1,:],x[2,:])
   out
 end
 
@@ -311,19 +300,20 @@ function obj(coeffs,p)
     SetCoeffs(tri_map, coeffs)
     map_of_x = Evaluate(tri_map, x)
     rho_of_map_of_x = log_target(map_of_x)
-    log_det = tri_map.LogDeterminant(x)
+    log_det = LogDeterminant(tri_map, x)
     -sum(rho_of_map_of_x + log_det)/num_points
 end
 
-function grad_obj(coeffs,p)
+function grad_obj!(g,coeffs,p)
 	tri_map, x = p
     num_points = size(x,1)
     SetCoeffs(tri_map, coeffs)
     map_of_x = Evaluate(tri_map, x)
     sensi = grad_x_log_target(map_of_x)
+	sensi = collect(reshape(sensi, length(sensi), 1))
     grad_rho_of_map_of_x = CoeffGrad(tri_map, x, sensi)
-    grad_log_det = tri_map.LogDeterminantCoeffGrad(x)
-    -sum(grad_rho_of_map_of_x + grad_log_det, 1)/num_points
+    grad_log_det = LogDeterminantCoeffGrad(tri_map, x)
+    g .= -sum(grad_rho_of_map_of_x + grad_log_det, 1)/num_points
 end
 
 
@@ -333,7 +323,7 @@ end
 begin
 #Draw reference samples to define objective
 N=10000
-Xtrain = random.randn(2,N)
+Xtrain = randn(2,N)
 end
 
 # ╔═╡ 95524424-23bb-11ed-388e-5555245ec846
@@ -344,15 +334,15 @@ md"""
 # ╔═╡ 95524442-23bb-11ed-210b-9b4243de0dc0
 md"""
 We use the MParT function `CreateTriangular` to directly create a transport map object of dimension with given total order parameterization.
-
-
-+
-Create transport map
-pts = mt.MapOptions()
-otal_order = 3
-ri_map = mt.CreateTriangular(2,2,total_order,opts)
--
 """
+
+# ╔═╡ eaeb3764-5d9f-494b-8cad-9031dcb1495a
+begin
+	# Create transport map
+	opts = MapOptions()
+	total_order = 3
+	tri_map = CreateTriangular(2,2,total_order,opts)
+end
 
 # ╔═╡ 95524460-23bb-11ed-0ecc-c5a9fb22102c
 md"""
@@ -361,12 +351,11 @@ md"""
 
 # ╔═╡ 95524474-23bb-11ed-2396-25b70f66a9aa
 begin
-options={"gtol": 1e-2, "disp": True}
-u0 =  CoeffMap(tri_map)
-p = (tri_map, Xtrain)
-fcn = OptimizationFunction(obj, grad=grad_obj)
-prob = OptimizationProblem(fcn, u0, p)
-res = solve(prob, BFGS())
+# u0 =  CoeffMap(tri_map)
+# p = (tri_map, Xtrain)
+# fcn = OptimizationFunction(obj, grad=grad_obj!)
+# prob = OptimizationProblem(fcn, u0, p, gtol=1e-2)
+# res = solve(prob, BFGS())
 end
 
 # ╔═╡ 95524e88-23bb-11ed-0a1f-91e9b1718e3c
@@ -388,9 +377,9 @@ Comparison between contours of the posterior $\pi(\boldsymbol{\theta}|\mathbf{y}
 begin
 # Pushforward distribution
 function push_forward_pdf(tri_map,ref,x)
-  xinv = tri_map.Inverse(x,x)
-  log_det_grad_x_inverse = - tri_map.LogDeterminant(xinv)
-  log_pdf = ref.logpdf(xinv.T)+log_det_grad_x_inverse
+  xinv = MParT.Inverse(tri_map,x,x)
+  log_det_grad_x_inverse = - LogDeterminant(tri_map, xinv)
+  log_pdf = logpdf(ref, xinv)+log_det_grad_x_inverse
   exp(log_pdf)
 end
 end
@@ -398,20 +387,18 @@ end
 # ╔═╡ 95526dd2-23bb-11ed-0084-2f374a59fcf3
 begin
 # Reference distribution
-ref = multivariate_normal(zeros(2),eye(2))
+ref = MvNormal(I(2))
 
-xx_eval = vstack((vec(X),vec(Y)))
+xx_eval = vcat(vec(X),vec(Y))
+xx_eval = collect(reshape(xx_eval, length(xx_eval), 1))
 Z2 = push_forward_pdf(tri_map,ref,xx_eval)
 Z2 = reshape(Z2, Ngrid,Ngrid)
 
-fig, ax = subplots()
-CS1 = ax.contour(X, Y, Z)
-CS2 = ax.contour(X, Y, Z2,linestyles="dashed")
-ax.set_ax0.xlabel = r"$\theta_1$"
-ax.set_ax0.ylabel = r"$\theta_2$"
-h1,_ = CS1.axislegend_elements()
-h2,_ = CS2.axislegend_elements()
-ax.axislegend([h1[0], h2[0]], ["Unnormilzed posterior", "TM approximation"])
+fig2 = Figure()
+ax2 = Axis(fig2[1,1], xlabel="\theta_1", ylabel="\theta_2")
+contour!(ax2, X, Y, Z, label="Unnormalized posterior")
+contour!(ax2, X, Y, Z2,linestyles="dashed", label="TM approximation")
+axislegend()
 fig0
 
 
@@ -446,9 +433,9 @@ end
 # ╔═╡ 9552ed34-23bb-11ed-2861-df67d16017ce
 begin
 # Reference distribution
-ref_distribution = multivariate_normal(zeros(2),eye(2));
+ref_distribution = MvNormal(I(2));
 
-test_z = random.randn(2,10000)
+test_z = randn(2,10000)
 # Compute variance diagnostic
 var_diag = variance_diagnostic(tri_map,ref,log_target,test_z)
 
@@ -520,7 +507,6 @@ fig0
 # ╠═954d8600-23bb-11ed-3afb-79985341ba63
 # ╠═954d8650-23bb-11ed-08e0-35522a6e6112
 # ╠═954d8658-23bb-11ed-0104-fd19bf60c5af
-# ╠═954d866e-23bb-11ed-1d7e-8930202335d5
 # ╠═955024a2-23bb-11ed-00bf-4b1f8d006e36
 # ╠═955024dc-23bb-11ed-1d86-3b6cc63b7ef9
 # ╠═955024f0-23bb-11ed-185c-b3f673bbe699
@@ -547,6 +533,7 @@ fig0
 # ╠═955232d6-23bb-11ed-04b0-3956d0902407
 # ╠═95524424-23bb-11ed-388e-5555245ec846
 # ╠═95524442-23bb-11ed-210b-9b4243de0dc0
+# ╠═eaeb3764-5d9f-494b-8cad-9031dcb1495a
 # ╠═95524460-23bb-11ed-0ecc-c5a9fb22102c
 # ╠═95524474-23bb-11ed-2396-25b70f66a9aa
 # ╠═95524e88-23bb-11ed-0a1f-91e9b1718e3c
