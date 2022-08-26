@@ -7,9 +7,16 @@
 % as Live Script” from the Current Folder Browser or document tab or by doing 
 % "Save as ..." and select the "MATLAB Live Code Files (*.mlx)" format._
 %
+% Note that this example requires the following matlab toolboxes:
+%
+% * Statistics and Machine Learning Toolbox
+% * Optimization Toolbox
+%
 %% Imports
 % First, import |MParT| by adding the path to the installation folder and initialize 
-% the |Kokkos| environment. Note that it is possible to specify the number of 
+% the |Kokkos| environment. The path should include the |matlab| folder.  
+% For example, |~/Installations/MParT/matlab|.
+% Note that it is possible to specify the number of 
 % threads used by |MParT| as an argument of the |KokkosInitialize| function. The 
 % number of threads can only be set once per session.
 
