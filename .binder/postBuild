@@ -36,11 +36,4 @@ rm -rf ~/.work
 jupyter lab build
 
 cd ~/examples/python
-
-export PYTHONPATH=$PYTHONPATH:$PREFIX/python
-
-jupytext --set-formats ipynb,py MonotoneLeastSquares.py
-#jupyter nbconvert --ExecutePreprocessor.timeout=600 --to notebook --execute MonotoneLeastSquares.ipynb
-
-jupytext --set-formats ipynb,py StochasticVolatility.py
-#jupyter nbconvert --ExecutePreprocessor.timeout=3600 --to notebook --execute StochasticVolatility.ipynb
+for i in *.py;do jupytext --set-formats ipynb,py $i; done
