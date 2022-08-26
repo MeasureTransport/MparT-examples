@@ -4,6 +4,6 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:~/.installations/lib
 export PYTHONPATH=$PYTHONPATH:~/.installations/python
 export OMP_PROC_BIND=spread
 export OMP_PLACES=threads
-export KOKKOS_NUM_THREADS=4
+export KOKKOS_NUM_THREADS=`nproc`
 
 exec "$@"
