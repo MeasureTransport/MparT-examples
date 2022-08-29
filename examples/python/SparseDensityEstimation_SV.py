@@ -100,6 +100,7 @@ Zvisu = Xvisu[2:,:]
 plt.figure()
 plt.plot(Zvisu)
 plt.xlabel("Days (d)")
+plt.show()
 # -
 
 # And corresponding realization of hyperparameters
