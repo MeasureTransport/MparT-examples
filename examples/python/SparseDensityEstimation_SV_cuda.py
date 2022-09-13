@@ -18,7 +18,7 @@
 # In this example we demonstrate how MParT can be use to build map with certain sparse structure in order to characterize high dimensional densities with conditional independence.
 
 # ## Imports
-# First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
+# First, import MParT and other packages used in this notebook.
 
 # +
 import numpy as np
@@ -26,9 +26,6 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 from tqdm import tqdm
-
-import os
-os.environ['KOKKOS_NUM_THREADS'] = '8'
 
 import mpart as mt
 print('Kokkos is using', mt.Concurrency(), 'threads')
