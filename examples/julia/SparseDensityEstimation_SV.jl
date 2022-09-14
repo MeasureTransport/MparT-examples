@@ -27,28 +27,6 @@ md"""
 First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 """
 
-# ╔═╡ baab6b9e-23c0-11ed-0b9c-998c41bafb45
-begin
-import numpy as np
-from scipy.optimize import minimize
-import matplotlib.pyplot as plt
-from scipy.stats import multivariate_normal
-from tqdm import tqdm
-
-import os
-os.environ["KOKKOS_NUM_THREADS"] = "8"
-
-import mpart as mt
-print("Kokkos is using", Concurrency(), "threads")
-rcParams["figure.dpi"] = 110
-
-
-end
-
-# ╔═╡ baae2d8c-23c0-11ed-1931-97afb3a3df9f
-begin
-end
-
 # ╔═╡ baae2daa-23c0-11ed-2739-85c0abcd5341
 md"""
 ## Stochastic volatility model
@@ -104,36 +82,25 @@ Drawing samples $(\mu^i,\phi^i,x_0^i,x_1^i,...,x_T^i)$ can be performed by the f
 """
 
 # ╔═╡ baae2ef4-23c0-11ed-363f-29c8463b2a72
-begin
 function generate_SV_samples(d,N)
     # Sample hyper-parameters
     sigma = 0.25
-    mu = random.randn(1,N)
-    phis = 3+random.randn(1,N)
-    phi = 2*exp(phis)/(1+exp(phis))-1
-    X = vstack((mu,phi))
-    if d  .> 2:
+    mu = randn(1,N)
+    phis = 3 .+ randn(1,N)
+    phi = 2*exp.(phis)/(1 .+ exp.(phis)) .- 1
+	@info "" size(mu) size(phi)
+    X = vcat(mu,phi)
+    if d  > 2
         # Sample Z0
-        Z = sqrt(1/(1-phi .^2))*random.randn(1,N) + mu
-end
-
-# ╔═╡ baae6130-23c0-11ed-24a6-f12ac1a13e2f
-begin
-        # Sample auto-regressively
-        for i in range(d-3)
-            Zi = mu + phi * (Z[-1,:] - mu)+sigma*random.randn(1,N)
-            Z = vstack((Z,Zi))
-end
-
-# ╔═╡ baae75b2-23c0-11ed-1043-33cce36b2b52
-begin
-        X = vstack((X,Z))
-    X
-end
-end
-
-# ╔═╡ baae8e76-23c0-11ed-2d2a-5362b2d87ed0
-begin
+        Z = sqrt.(1/(1-phi .^2))*randn(1,N) + mu
+		# Sample auto-regressively
+        for i in 1:(d-3)
+            Zi = mu + phi * (Z[-1,:] - mu)+sigma*randn(1,N)
+            Z = vcat(Z,Zi)
+		end
+		X = vcat(X,Z)
+	end
+	X
 end
 
 # ╔═╡ baae8e88-23c0-11ed-2ea4-6d63a48fb345
@@ -154,20 +121,16 @@ Few realizations of the process look like
 
 # ╔═╡ baae98a8-23c0-11ed-271a-f12d2cad5514
 begin
-Nvisu = 10 #Number of samples
-Xvisu = generate_SV_samples(d, Nvisu)
-
-Zvisu = Xvisu[2:,:]
-
-fig1 = Figure()
-ax1 = Axis(fig1[1,1])
-lines!(ax1, Zvisu)
-scatter!(ax1, Zvisu)
-ax1.xlabel = "Days (d)"
-end
-
-# ╔═╡ baaec164-23c0-11ed-038f-ef96b9369edf
-begin
+	Nvisu = 10 #Number of samples
+	Xvisu = generate_SV_samples(d, Nvisu)
+	
+	Zvisu = Xvisu[3:end,:]
+	
+	fig1 = Figure()
+	ax1 = Axis(fig1[1,1], xlabel="Days (d)")
+	lines!(ax1, Zvisu)
+	scatter!(ax1, Zvisu)
+	fig1
 end
 
 # ╔═╡ baaec170-23c0-11ed-3433-99cd648f9917
@@ -177,20 +140,15 @@ And corresponding realization of hyperparameters
 
 # ╔═╡ baaec184-23c0-11ed-1632-6152101b3a8a
 begin
-hyper_params = Xvisu[:2,:]
-fig2 = Figure()
-ax2 = Axis(fig2[1,1])
-lines!(ax2, range(1,Nvisu+1),Xvisu[1,:],label="$\mu$")
-scatter!(ax2, range(1,Nvisu+1),Xvisu[1,:],label="$\mu$")
-lines!(ax2, range(1,Nvisu+1),Xvisu[2,:],label="$\phi$")
-scatter!(ax2, range(1,Nvisu+1),Xvisu[2,:],label="$\phi$")
-ax2.xlabel = "Samples"
-axislegend()
-fig2
-end
-
-# ╔═╡ baaee574-23c0-11ed-2be1-873a26f087f7
-begin
+	hyper_params = Xvisu[1:2,:]
+	fig2 = Figure()
+	ax2 = Axis(fig2[1,1], xlabel="Samples")
+	lines!(ax2, 1:Nvisu+1,Xvisu[2,:],label=L"$\mu$")
+	scatter!(ax2, 1:Nvisu+1,Xvisu[2,:],label=L"$\mu$")
+	lines!(ax2, 1:Nvisu+1,Xvisu[3,:],label=L"$\phi$")
+	scatter!(ax2, 1:Nvisu+1,Xvisu[3,:],label=L"$\phi$")
+	axislegend()
+	fig2
 end
 
 # ╔═╡ baaee57e-23c0-11ed-36ca-77d6124cb674
@@ -715,28 +673,21 @@ Using less parameters helps error scaling with dimension but aslo helps reducing
 # ╔═╡ Cell order:
 # ╠═baab6a02-23c0-11ed-17dc-a3d99fcc7b58
 # ╠═baab6a84-23c0-11ed-3f3b-01e3ad086ae7
-# ╠═baab6b24-23c0-11ed-0602-bdb17d65ca9b
-# ╠═baab6b7e-23c0-11ed-2af3-c9584eeff5fd
-# ╠═baab6b88-23c0-11ed-021d-8d0a20edce42
-# ╠═baab6b9e-23c0-11ed-0b9c-998c41bafb45
-# ╠═baae2d8c-23c0-11ed-1931-97afb3a3df9f
-# ╠═baae2daa-23c0-11ed-2739-85c0abcd5341
-# ╠═baae2dd2-23c0-11ed-00f8-6d0035b69fe4
-# ╠═baae2eae-23c0-11ed-0fc3-a3c61caa6f21
-# ╠═baae2ed4-23c0-11ed-2dab-4dca84f92e8b
-# ╠═baae2eea-23c0-11ed-31cc-29625e1c33e0
+# ╟─baab6b24-23c0-11ed-0602-bdb17d65ca9b
+# ╟─baab6b7e-23c0-11ed-2af3-c9584eeff5fd
+# ╟─baab6b88-23c0-11ed-021d-8d0a20edce42
+# ╟─baae2daa-23c0-11ed-2739-85c0abcd5341
+# ╟─baae2dd2-23c0-11ed-00f8-6d0035b69fe4
+# ╟─baae2eae-23c0-11ed-0fc3-a3c61caa6f21
+# ╟─baae2ed4-23c0-11ed-2dab-4dca84f92e8b
+# ╟─baae2eea-23c0-11ed-31cc-29625e1c33e0
 # ╠═baae2ef4-23c0-11ed-363f-29c8463b2a72
-# ╠═baae6130-23c0-11ed-24a6-f12ac1a13e2f
-# ╠═baae75b2-23c0-11ed-1043-33cce36b2b52
-# ╠═baae8e76-23c0-11ed-2d2a-5362b2d87ed0
-# ╠═baae8e88-23c0-11ed-2ea4-6d63a48fb345
+# ╟─baae8e88-23c0-11ed-2ea4-6d63a48fb345
 # ╠═baae8ea8-23c0-11ed-3cd5-e514c1a42f57
-# ╠═baae9894-23c0-11ed-1f4b-dbaa5d0557d2
+# ╟─baae9894-23c0-11ed-1f4b-dbaa5d0557d2
 # ╠═baae98a8-23c0-11ed-271a-f12d2cad5514
-# ╠═baaec164-23c0-11ed-038f-ef96b9369edf
-# ╠═baaec170-23c0-11ed-3433-99cd648f9917
+# ╟─baaec170-23c0-11ed-3433-99cd648f9917
 # ╠═baaec184-23c0-11ed-1632-6152101b3a8a
-# ╠═baaee574-23c0-11ed-2be1-873a26f087f7
 # ╠═baaee57e-23c0-11ed-36ca-77d6124cb674
 # ╠═baaee59e-23c0-11ed-3509-c9d5d65b9acb
 # ╠═baaee5a6-23c0-11ed-10b3-b7ea3dd18770
