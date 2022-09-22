@@ -87,22 +87,23 @@ Drawing samples $(\mu^i,\phi^i,x_0^i,x_1^i,...,x_T^i)$ can be performed by the f
 """
 
 # ╔═╡ baae2ef4-23c0-11ed-363f-29c8463b2a72
-function generate_SV_samples(d,N)
+function generate_SV_samples(d)
     # Sample hyper-parameters
     sigma = 0.25
-    mu = randn(1,N)
-    phis = 3 .+ randn(1,N)
-    phi = 2*exp.(phis) ./(1 .+ exp.(phis)) .- 1
-    X = vcat(mu,phi)
+    mu = randn()
+    phis = 3 + randn()
+    phi = 2*exp(phis)/(1 + exp(phis)) - 1
+    X = zeros(d)
+	X[1:2] .= [mu,phi]
     if d  > 2
         # Sample Z0
-        Z = sqrt.(1 ./(1 .-phi .^2)) .* randn(1,N) + mu
+		Z = zeros(d-2)
+        Z[1] = sqrt(1 /(1 - phi^2)) * randn() + mu
 		# Sample auto-regressively
-        for i in 1:(d-3)
-            Zi = mu + phi .* (Z[end,:]' - mu)+sigma*randn(1,N)
-            Z = vcat(Z,Zi)
+        for i in 2:(d-2)
+            Z[i] = mu + phi .* (Z[i-1] - mu)+sigma*randn()
 		end
-		X = vcat(X,Z)
+		X[3:end] .= Z
 	end
 	X
 end
@@ -126,7 +127,7 @@ Few realizations of the process look like
 # ╔═╡ baae98a8-23c0-11ed-271a-f12d2cad5514
 begin
 	Nvisu = 10 #Number of samples
-	Xvisu = generate_SV_samples(d, Nvisu)
+	Xvisu = reduce(hcat, generate_SV_samples(d) for _ in 1:Nvisu)
 	
 	Zvisu = Xvisu[3:end,:]
 	plt_cols = ["#1f77b4", "#ff7f0e", "#2ca02c",
@@ -257,10 +258,10 @@ From training samples generated with the known function we compare accuracy of t
 # ╔═╡ baafc3ea-23c0-11ed-26b4-a1adec224fc3
 begin
 	N = 2000 #Number of training samples
-	X = generate_SV_samples(d, N)
+	X = reduce(hcat, generate_SV_samples(d) for _ in 1:N)
 	
 	Ntest = 5000 # Number of testing samples
-	Xtest = generate_SV_samples(d,Ntest)
+	Xtest = reduce(hcat, generate_SV_samples(d) for _ in 1:Ntest)
 end
 
 # ╔═╡ baaff23e-23c0-11ed-3de6-c31ab40e44eb
@@ -350,7 +351,7 @@ Here we use a total order 1 multivariate expansion to parameterize each componen
 """
 
 # ╔═╡ bab09afe-23c0-11ed-25ce-abbc835d5a74
-opts = MapOptions()
+opts = MapOptions(basisType="ProbabilistHermite")
 
 # ╔═╡ bab0a622-23c0-11ed-30f0-eb74b2ff4a55
 md"""
