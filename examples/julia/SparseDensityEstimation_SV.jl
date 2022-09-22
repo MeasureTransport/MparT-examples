@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
@@ -7,14 +7,17 @@ using InteractiveUtils
 # ╔═╡ 8ea66ca7-981c-47d6-8513-099aed421e01
 using Pkg; Pkg.activate()
 
+# ╔═╡ 9888cc06-7790-48bb-ab2d-327fc355e99d
+Pkg.add(["Colors","CairoMakie"])
+
 # ╔═╡ baab6a84-23c0-11ed-3f3b-01e3ad086ae7
 using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, ProgressLogging, Colors, CairoMakie
 
 # ╔═╡ caac1a76-abf2-4ab0-96f9-07310c79628f
-ENV["KOKKOS_NUM_THREADS"] = 10
+ENV["KOKKOS_NUM_THREADS"] = 3
 
 # ╔═╡ e20f5bba-894b-4c9b-a362-f6afe3b8dc18
-Base.compilecache(Base.PkgId(MParT))
+# Base.compilecache(Base.PkgId(MParT))
 
 # ╔═╡ baab6b24-23c0-11ed-0602-bdb17d65ca9b
 md"""
@@ -668,6 +671,7 @@ Using less parameters helps error scaling with dimension but aslo helps reducing
 # ╔═╡ Cell order:
 # ╠═caac1a76-abf2-4ab0-96f9-07310c79628f
 # ╠═8ea66ca7-981c-47d6-8513-099aed421e01
+# ╠═9888cc06-7790-48bb-ab2d-327fc355e99d
 # ╠═baab6a84-23c0-11ed-3f3b-01e3ad086ae7
 # ╠═e20f5bba-894b-4c9b-a362-f6afe3b8dc18
 # ╟─baab6b24-23c0-11ed-0602-bdb17d65ca9b

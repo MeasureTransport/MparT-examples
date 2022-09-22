@@ -1,16 +1,12 @@
 ### A Pluto.jl notebook ###
-# v0.19.11
+# v0.19.9
 
 using Markdown
 using InteractiveUtils
 
 # ╔═╡ 954d8538-23bb-11ed-145b-0fad4e80d906
 # ╠═╡ show_logs = false
-begin
-using Pkg
-Pkg.add(url="https://github.com/MeasureTransport/MParT.jl")
-Pkg.add(["Distributions", "LinearAlgebra", "Statistics", "Optimization", "OptimizationOptimJL", "CairoMakie", "SpecialFunctions"])
-end
+using Pkg; Pkg.activate();
 
 # ╔═╡ 954d857e-23bb-11ed-379f-bf59db6edf0e
 using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, CairoMakie, SpecialFunctions
@@ -350,13 +346,16 @@ md"""
 """
 
 # ╔═╡ 95524474-23bb-11ed-2396-25b70f66a9aa
+# ╠═╡ disabled = true
+#=╠═╡
 begin
-# u0 =  CoeffMap(tri_map)
-# p = (tri_map, Xtrain)
-# fcn = OptimizationFunction(obj, grad=grad_obj!)
-# prob = OptimizationProblem(fcn, u0, p, gtol=1e-2)
-# res = solve(prob, BFGS())
+	u0 =  CoeffMap(tri_map)
+	p = (tri_map, Xtrain)
+	fcn = OptimizationFunction(obj, grad=grad_obj!)
+	prob = OptimizationProblem(fcn, u0, p, gtol=1e-2)
+	res = solve(prob, BFGS())
 end
+  ╠═╡ =#
 
 # ╔═╡ 95524e88-23bb-11ed-0a1f-91e9b1718e3c
 md"""
@@ -374,14 +373,12 @@ Comparison between contours of the posterior $\pi(\boldsymbol{\theta}|\mathbf{y}
 """
 
 # ╔═╡ 95524eb2-23bb-11ed-05b5-01cf63f91985
-begin
 # Pushforward distribution
 function push_forward_pdf(tri_map,ref,x)
   xinv = MParT.Inverse(tri_map,x,x)
   log_det_grad_x_inverse = - LogDeterminant(tri_map, xinv)
   log_pdf = logpdf(ref, xinv)+log_det_grad_x_inverse
   exp(log_pdf)
-end
 end
 
 # ╔═╡ 95526dd2-23bb-11ed-0084-2f374a59fcf3
@@ -395,13 +392,11 @@ Z2 = push_forward_pdf(tri_map,ref,xx_eval)
 Z2 = reshape(Z2, Ngrid,Ngrid)
 
 fig2 = Figure()
-ax2 = Axis(fig2[1,1], xlabel="\theta_1", ylabel="\theta_2")
+ax2 = Axis(fig2[1,1], xlabel=L"\theta_1", ylabel=L"\theta_2")
 contour!(ax2, X, Y, Z, label="Unnormalized posterior")
-contour!(ax2, X, Y, Z2,linestyles="dashed", label="TM approximation")
+contour!(ax2, X, Y, Z2, label="TM approximation")
 axislegend()
-fig0
-
-
+fig2
 end
 
 # ╔═╡ 9552c4c6-23bb-11ed-1d37-575900099d7c
@@ -418,31 +413,28 @@ This diagnostic is asymptotically equivalent to the minimized KL divergence $D_{
 """
 
 # ╔═╡ 9552c50c-23bb-11ed-064d-8361c8366bad
-begin
 function variance_diagnostic(tri_map,ref,target_logpdf,x)
-  ref_logpdf = ref.logpdf(x.T)
+  ref_logpdf = logpdf(ref, x')
   y = Evaluate(tri_map, x)
-  pullback_logpdf = target_logpdf(y) + tri_map.LogDeterminant(x)
+  pullback_logpdf = target_logpdf(y) + LogDeterminant(tri_map, x)
   diff = ref_logpdf - pullback_logpdf
   expect = mean(diff)
-  var = 0.5*mean((diff-expect) .^2)
-  var
-end
+  0.5*mean((diff-expect) .^2)
 end
 
 # ╔═╡ 9552ed34-23bb-11ed-2861-df67d16017ce
 begin
-# Reference distribution
-ref_distribution = MvNormal(I(2));
-
-test_z = randn(2,10000)
-# Compute variance diagnostic
-var_diag = variance_diagnostic(tri_map,ref,log_target,test_z)
-
-# Print final coeffs and objective
-print("==================")
-print("Variance diagnostic: {:.2E}".format(var_diag))
-print("==================")
+	# Reference distribution
+	ref_distribution = MvNormal(I(2));
+	
+	test_z = randn(2,10000)
+	# Compute variance diagnostic
+	var_diag = variance_diagnostic(tri_map,ref,log_target,test_z)
+	
+	# Print final coeffs and objective
+	print("""==================
+	Variance diagnostic: $var_diag
+	==================""")
 end
 
 # ╔═╡ 9553252c-23bb-11ed-37b4-958268509e7c
@@ -453,6 +445,8 @@ Once the transport map from reference to unnormalized posterior is estimated it 
 """
 
 # ╔═╡ 9553254c-23bb-11ed-1423-9364ea2e42ce
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 Znew = random.randn(2,5000)
 colors = arctan2(Znew[1,:],Znew[0,:])
@@ -475,6 +469,7 @@ axs[1].set_ax0.title = "Reference Samples"
 
 fig0
 end
+  ╠═╡ =#
 
 # ╔═╡ 95539ba0-23bb-11ed-3d5c-57908b19833e
 md"""
@@ -482,16 +477,16 @@ Samples can then be used to compute quantity of interest with respect to paramet
 """
 
 # ╔═╡ 95539bc6-23bb-11ed-2405-b77739d691a7
+#=╠═╡
 begin
 X_mean = mean(Xpost,1)
 print("Mean a posteriori: $X_mean")
 end
-
-# ╔═╡ 9553a5aa-23bb-11ed-164b-e56251b94523
-begin
-end
+  ╠═╡ =#
 
 # ╔═╡ 9553a5b2-23bb-11ed-3dac-bf9f97829c5b
+# ╠═╡ disabled = true
+#=╠═╡
 begin
 ax[0].hist(Xpost[0,:], 50, alpha=0.5, density=True)
 ax[0].set_ax0.xlabel = r"$\theta_1$"
@@ -500,53 +495,53 @@ ax[1].hist(Xpost[1,:], 50, alpha=0.5, density=True)
 ax[1].set_ax0.xlabel = r"$\theta_2$"
 ax[1].set_ax0.ylabel = r"$\tilde{\pi}(\theta_2)$"
 fig0
+  ╠═╡ =#
 
 # ╔═╡ Cell order:
 # ╠═954d8538-23bb-11ed-145b-0fad4e80d906
 # ╠═954d857e-23bb-11ed-379f-bf59db6edf0e
-# ╠═954d8600-23bb-11ed-3afb-79985341ba63
-# ╠═954d8650-23bb-11ed-08e0-35522a6e6112
-# ╠═954d8658-23bb-11ed-0104-fd19bf60c5af
-# ╠═955024a2-23bb-11ed-00bf-4b1f8d006e36
-# ╠═955024dc-23bb-11ed-1d86-3b6cc63b7ef9
-# ╠═955024f0-23bb-11ed-185c-b3f673bbe699
-# ╠═9550257c-23bb-11ed-0959-2becda31f4a3
-# ╠═95502586-23bb-11ed-2dcd-7329ebb64ff0
-# ╠═955025ea-23bb-11ed-2bf3-038f89b70ae3
+# ╟─954d8600-23bb-11ed-3afb-79985341ba63
+# ╟─954d8650-23bb-11ed-08e0-35522a6e6112
+# ╟─954d8658-23bb-11ed-0104-fd19bf60c5af
+# ╟─955024a2-23bb-11ed-00bf-4b1f8d006e36
+# ╟─955024dc-23bb-11ed-1d86-3b6cc63b7ef9
+# ╟─955024f0-23bb-11ed-185c-b3f673bbe699
+# ╟─9550257c-23bb-11ed-0959-2becda31f4a3
+# ╟─95502586-23bb-11ed-2dcd-7329ebb64ff0
+# ╟─955025ea-23bb-11ed-2bf3-038f89b70ae3
 # ╠═955025f4-23bb-11ed-2332-7b5583ceb8b4
-# ╠═9550755e-23bb-11ed-0a8a-e9249a94e917
+# ╟─9550755e-23bb-11ed-0a8a-e9249a94e917
 # ╠═9550757c-23bb-11ed-163d-0bc0ea8f5239
-# ╠═955090cc-23bb-11ed-3513-57f02bb737ea
-# ╠═9550911a-23bb-11ed-1e50-c7956d97df01
+# ╟─955090cc-23bb-11ed-3513-57f02bb737ea
+# ╟─9550911a-23bb-11ed-1e50-c7956d97df01
 # ╠═95509124-23bb-11ed-0191-cbc0b0146cc7
-# ╠═9550cb82-23bb-11ed-22db-f925cb8b7d63
+# ╟─9550cb82-23bb-11ed-22db-f925cb8b7d63
 # ╠═9550cb94-23bb-11ed-3489-3f3450a778a0
-# ╠═955137de-23bb-11ed-08be-77012cac7bd9
+# ╟─955137de-23bb-11ed-08be-77012cac7bd9
 # ╠═95513804-23bb-11ed-153a-4f9809a0bc9d
-# ╠═95515618-23bb-11ed-0b45-cfaf024382b0
+# ╟─95515618-23bb-11ed-0b45-cfaf024382b0
 # ╠═9551562c-23bb-11ed-2be1-93c303957fd2
-# ╠═9551a47e-23bb-11ed-0695-979c1f145d52
-# ╠═9551a492-23bb-11ed-20d2-3f8674c9579c
-# ╠═9551a4a6-23bb-11ed-0117-6bf451a9bc15
-# ╠═9551a4b0-23bb-11ed-31a5-051dcf2c9d0a
+# ╟─9551a47e-23bb-11ed-0695-979c1f145d52
+# ╟─9551a492-23bb-11ed-20d2-3f8674c9579c
+# ╟─9551a4a6-23bb-11ed-0117-6bf451a9bc15
+# ╟─9551a4b0-23bb-11ed-31a5-051dcf2c9d0a
 # ╠═9551a528-23bb-11ed-0b28-fdca4891dd0e
 # ╠═955232d6-23bb-11ed-04b0-3956d0902407
-# ╠═95524424-23bb-11ed-388e-5555245ec846
-# ╠═95524442-23bb-11ed-210b-9b4243de0dc0
+# ╟─95524424-23bb-11ed-388e-5555245ec846
+# ╟─95524442-23bb-11ed-210b-9b4243de0dc0
 # ╠═eaeb3764-5d9f-494b-8cad-9031dcb1495a
-# ╠═95524460-23bb-11ed-0ecc-c5a9fb22102c
+# ╟─95524460-23bb-11ed-0ecc-c5a9fb22102c
 # ╠═95524474-23bb-11ed-2396-25b70f66a9aa
-# ╠═95524e88-23bb-11ed-0a1f-91e9b1718e3c
-# ╠═95524e92-23bb-11ed-305e-eb877442f4d9
-# ╠═95524e9c-23bb-11ed-17f6-b3eacfd2065d
+# ╟─95524e88-23bb-11ed-0a1f-91e9b1718e3c
+# ╟─95524e92-23bb-11ed-305e-eb877442f4d9
+# ╟─95524e9c-23bb-11ed-17f6-b3eacfd2065d
 # ╠═95524eb2-23bb-11ed-05b5-01cf63f91985
 # ╠═95526dd2-23bb-11ed-0084-2f374a59fcf3
-# ╠═9552c4c6-23bb-11ed-1d37-575900099d7c
+# ╟─9552c4c6-23bb-11ed-1d37-575900099d7c
 # ╠═9552c50c-23bb-11ed-064d-8361c8366bad
 # ╠═9552ed34-23bb-11ed-2861-df67d16017ce
-# ╠═9553252c-23bb-11ed-37b4-958268509e7c
+# ╟─9553252c-23bb-11ed-37b4-958268509e7c
 # ╠═9553254c-23bb-11ed-1423-9364ea2e42ce
-# ╠═95539ba0-23bb-11ed-3d5c-57908b19833e
+# ╟─95539ba0-23bb-11ed-3d5c-57908b19833e
 # ╠═95539bc6-23bb-11ed-2405-b77739d691a7
-# ╠═9553a5aa-23bb-11ed-164b-e56251b94523
 # ╠═9553a5b2-23bb-11ed-3dac-bf9f97829c5b
