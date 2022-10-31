@@ -97,11 +97,21 @@ function objective(coeffs,p)
     -sum(vec(pi_of_map_of_x) + log_det)/num_points
 end
 
+# ╔═╡ f044086b-a5e2-485d-983a-4077ac1ccccf
+begin
+	p = monotoneMap, x, reference_density
+	u0 = CoeffMap(monotoneMap)
+	prob = OptimizationProblem(objective, u0, p)
+end
+
 # ╔═╡ 926399f6-23bc-11ed-209f-63816e8c6693
 println("Starting coeffs")
 
 # ╔═╡ 8c9f78ec-5f59-479a-b457-bbccff1a5445
 println(CoeffMap(monotoneMap))
+
+# ╔═╡ 60aa8b4c-964c-453e-b205-5367b9eebc5e
+u02 = CoeffMap(monotoneMap)
 
 # ╔═╡ ce8b4ab7-e25c-4de1-af4c-a7a84302b049
 err0 = objective(u02, p)
@@ -146,16 +156,6 @@ begin
 	
 	fig2
 end
-
-# ╔═╡ f044086b-a5e2-485d-983a-4077ac1ccccf
-begin
-	p = monotoneMap, x, reference_density
-	u0 = CoeffMap(monotoneMap)
-	prob = OptimizationProblem(objective, u0, p)
-end
-
-# ╔═╡ 60aa8b4c-964c-453e-b205-5367b9eebc5e
-u02 = CoeffMap(monotoneMap)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
