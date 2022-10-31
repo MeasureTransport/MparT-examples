@@ -7,7 +7,7 @@ using MParT, Distributions, LinearAlgebra, Statistics, Optimization, Optimizatio
 make_plot = true
 
 if make_plot
-    using GLMakie
+    using CairoMakie
 end
 
 ## Geometry
@@ -56,7 +56,6 @@ if make_plot
     scatter!(ax11, vec(x), vec(y_true), alpha=0.8, label="true data")
     scatter!(ax11, vec(x), vec(y_measured), alpha=0.8, label="measured data")
     scatter!(ax11, vec(x), vec(map_of_x_before), alpha=0.8, label="initial map output")
-    scatter!(ax11, vec(x), vec(map_of_x_after), alpha=0.8, label="final map output")
     axislegend(ax11, position=:rb)
     display(fig1)
 end
