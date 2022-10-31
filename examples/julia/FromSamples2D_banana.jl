@@ -1,11 +1,16 @@
-using MParT, CxxWrap
-using Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL
+## It is recommended with this script to use VSCode with Julia extension
+# Press shift+alt+enter to run the current block
+
+ENV["KOKKOS_NUM_THREADS"] = 4
+using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL
 
 make_plot = true
 
 if make_plot
     using GLMakie
+    Makie.inline!(true)
 end
+
 ##
 num_points = 1000
 z = randn(2,num_points)
@@ -51,27 +56,27 @@ end
 map_of_x = Evaluate(tri_map, x)
 if make_plot
     fig = Figure()
-    ax1 = Axis(fig[1,1], title="Before Optimization")
+    ax1 = Axis(fig[1,1], title="Before Optimization", aspect=DataAspect())
+    scatter!(ax1, test_x[1,:], test_x[2,:], color=(:blue,0.25), label="Target Samples")
     contour!(ax1, t, t, reference_density_pdf)
-    scatter!(ax1, test_x[1,:], test_x[2,:], color=(:blue,0.5), label="Target Samples")
     axislegend(ax1)
     display(fig)
 end
 
+## Create Optimization Problem
 u0 = CoeffMap(tri_map)
 p = (tri_map, x)
 fcn = OptimizationFunction(obj, grad = grad_obj)
 prob = OptimizationProblem(fcn, u0, p, g_tol = 1e-16)
 
 ## Optimize
-
-
 println("Starting coeffs")
 println(u0)
 println("and error: $(obj(u0,p))")
 println("===================")
 sol = solve(prob, BFGS())
-##
+
+## Print and Plot solution
 u_final = sol.u
 SetCoeffs(tri_map, u_final)
 println("Final coeffs")
@@ -81,12 +86,14 @@ println("===================")
 map_of_test_x = Evaluate(tri_map, test_x)
 if make_plot
     fig = Figure()
-    ax2 = Axis(fig[1,1], title="After Optimization")
+    ax2 = Axis(fig[1,1], title="After Optimization", aspect=DataAspect())
+    scatter!(ax2, map_of_test_x[1,:], map_of_test_x[2,:], color=(:blue,0.25), label="Target Samples")
     contour!(ax2, t, t, reference_density_pdf)
-    scatter!(ax2, map_of_test_x[1,:], map_of_test_x[2,:], color=(:blue,0.5), label="Target Samples")
     axislegend(ax2)
     display(fig)
 end
+
+## Verify Solution follows the 2D normal closely
 mean_of_map = mean(map_of_test_x, dims=2)
 cov_of_map = cov(map_of_test_x, dims=2)
 println("Mean of map")

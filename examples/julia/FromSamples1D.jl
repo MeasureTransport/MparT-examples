@@ -1,11 +1,17 @@
-using MParT, CxxWrap
-using Distributions, Optimization, OptimizationOptimJL
+## It is recommended with this script to use VSCode with Julia extension
+# Press shift+alt+enter to run the current block
+
+ENV["KOKKOS_NUM_THREADS"] = 4
+using MParT, Distributions, Optimization, OptimizationOptimJL
 
 make_plot = true
 
 if make_plot
     using GLMakie
+    Makie.inline!(true)
 end
+
+## Define the map from standard normal to a non-Gaussian test distribution
 
 raw"""
     To make skewed and/or non-Gaussian tailed test distributions
@@ -47,7 +53,7 @@ mset = MultiIndexSet(multis)
 fixed_mset = Fix(mset, true)
 
 # Set MapOptions and make map
-opts = MapOptions(basisType = BasisTypes.HermiteFunctions)
+opts = MapOptions(basisType = "HermiteFunctions")
 monotoneMap = CreateComponent(fixed_mset, opts)
 
 # KL divergence objective
