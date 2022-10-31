@@ -52,7 +52,7 @@ prob = OptimizationProblem(fcn, u0, p)
 # Plot Before Optimization
 if make_plot
     fig1 = Figure()
-    ax11 = Axis(fig1[1,1], title = "Starting map error: $error_before / Final Map Error $error_after")
+    ax11 = Axis(fig1[1,1], title = "Starting map error: $error_before")
     scatter!(ax11, vec(x), vec(y_true), alpha=0.8, label="true data")
     scatter!(ax11, vec(x), vec(y_measured), alpha=0.8, label="measured data")
     scatter!(ax11, vec(x), vec(map_of_x_before), alpha=0.8, label="initial map output")
