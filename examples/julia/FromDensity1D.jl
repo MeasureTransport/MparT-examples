@@ -1,12 +1,15 @@
-using MParT, CxxWrap
-using Distributions, Optimization, OptimizationOptimJL
+## It is recommended with this script to use VSCode with Julia extension
+# Press shift+alt+enter to run the current block
+
+ENV["KOKKOS_NUM_THREADS"] = 4
+using MParT, Distributions, Optimization, OptimizationOptimJL
 
 make_plot = true
 
 if make_plot
     using GLMakie
+    Makie.inline!(true)
 end
-##
 
 num_points = 5000
 mu = 2
@@ -19,22 +22,22 @@ reference_density_pdf = pdf.(rv, t)
 
 num_bins = 50
 if make_plot
-    fig = Figure()
-    ax1 = Axis(fig[1,1], title="Before Optimization")
-    hist!(ax1, x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Reference Samples")
+    fig1 = Figure()
+    ax1 = Axis(fig1[1,1], title="Before Optimization")
+    hist!(ax1, vec(x), bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Reference Samples")
     scatter!(ax1, t, reference_density_pdf, color=:red, label="Target Density")
     axislegend(ax1)
-    display(fig)
+    display(fig1)
 end
 
-##
-A = reshape(0:1,2,1) # The ;; makes a single row matrix then transpose for single column
+## Create the MultiIndexSet & Initial Map
+A = reshape(0:1,2,1)
 mset = MultiIndexSet(A)
 fixed_mset = Fix(mset, true)
 opts = MapOptions()
 monotoneMap = CreateComponent(fixed_mset, opts)
 
-# KL divergence objective
+## Define KL divergence objective
 function objective(coeffs,p)
     monotoneMap, x = p
     SetCoeffs(monotoneMap, coeffs)
@@ -48,7 +51,7 @@ u0 = CoeffMap(monotoneMap)
 p = monotoneMap, x
 prob = OptimizationProblem(objective, u0, p)
 
-# Optimize
+## Optimize the coefficients of the Map
 println("Starting Coeffs")
 println(u0)
 println("And error $(objective(u0,p))")
@@ -59,13 +62,13 @@ println("Final Coeffs")
 println(u_final)
 println("And error $(objective(u_final,p))")
 
-## After optimization Plot
+## Plot the results after optimization
 map_of_x = Evaluate(monotoneMap, x)
 if make_plot
-    fig = Figure()
-    ax2 = Axis(fig[1,1], title="After Optimization")
-    hist!(ax2, map_of_x[:], bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Optimized Samples")
+    fig2 = Figure()
+    ax2 = Axis(fig2[1,1], title="After Optimization")
+    hist!(ax2, vec(map_of_x), bins=num_bins, color=(:blue,0.5), normalization=:pdf, label="Optimized Samples")
     scatter!(ax2, t, reference_density_pdf, color=:red, label="Target Density")
     axislegend(ax2)
-    display(fig)
+    display(fig2)
 end
