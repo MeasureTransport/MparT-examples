@@ -41,6 +41,14 @@ function objective(coeffs,p)
     norm(map_of_x - y_measured)^2/size(x,2)
 end
 
+## Optimization Setup
+map_of_x_before = Evaluate(monotoneMap, x)
+u0 = CoeffMap(monotoneMap)
+p = (monotoneMap, x, y_measured)
+error_before = objective(u0,p)
+fcn = OptimizationFunction(objective)
+prob = OptimizationProblem(fcn, u0, p)
+
 # Plot Before Optimization
 if make_plot
     fig1 = Figure()
@@ -52,14 +60,6 @@ if make_plot
     axislegend(ax11, position=:rb)
     display(fig1)
 end
-
-## Optimization Setup
-map_of_x_before = Evaluate(monotoneMap, x)
-u0 = CoeffMap(monotoneMap)
-p = (monotoneMap, x, y_measured)
-error_before = objective(u0,p)
-fcn = OptimizationFunction(objective)
-prob = OptimizationProblem(fcn, u0, p)
 
 ## Optimize
 sol = solve(prob, NelderMead())
