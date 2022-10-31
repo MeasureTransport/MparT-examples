@@ -7,7 +7,7 @@ using MParT, Distributions, LinearAlgebra, Statistics, Optimization, Optimizatio
 make_plot = true
 
 if make_plot
-    using CairoMakie
+    using GLMakie
 end
 
 ## Geometry
