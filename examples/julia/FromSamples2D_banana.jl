@@ -297,7 +297,7 @@ begin
 fig2 = Figure()
 ax2 = Axis(fig2[1,1])
 ax2.title = "Before optimization"
-contour(*grid, ref_pdf_at_grid)
+contour(grid, ref_pdf_at_grid)
 scatter(r_test_before_opt[0,:],r_test_before_opt[1,:], facecolor=(:blue,0.1), label="Pushed target samples through $S$")
 axislegend()
 ax2.xlabel = "$r_1$"
