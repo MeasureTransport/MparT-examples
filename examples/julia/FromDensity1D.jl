@@ -104,7 +104,7 @@ println("Starting coeffs")
 println(CoeffMap(monotoneMap))
 
 # ╔═╡ ce8b4ab7-e25c-4de1-af4c-a7a84302b049
-err0 = objective(u0, p)
+err0 = objective(u02, p)
 
 # ╔═╡ 7ba62ea3-cba2-4832-b1a3-4b291b66c1c7
 @printf "and error: %.2e\n" err0
@@ -155,7 +155,7 @@ begin
 end
 
 # ╔═╡ 60aa8b4c-964c-453e-b205-5367b9eebc5e
-u0 = CoeffMap(monotoneMap)
+u02 = CoeffMap(monotoneMap)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
