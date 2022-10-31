@@ -20,7 +20,7 @@ First, import MParT and other packages used in this notebook. Note that it is po
 """
 
 # ╔═╡ 683d5dc1-f954-4ca2-87c1-e400e6889921
-ENV["KOKKOS_NUM_THREADS"] = 4
+ENV["KOKKOS_NUM_THREADS"] = 2
 
 # ╔═╡ 9262e772-23bc-11ed-062e-b35629702528
 md"""
@@ -98,15 +98,29 @@ function objective(coeffs,p)
 end
 
 # ╔═╡ 926399f6-23bc-11ed-209f-63816e8c6693
+println("Starting coeffs")
+
+# ╔═╡ 8c9f78ec-5f59-479a-b457-bbccff1a5445
+println(CoeffMap(monotoneMap))
+
+# ╔═╡ ce8b4ab7-e25c-4de1-af4c-a7a84302b049
+err0 = objective(u0, p)
+
+# ╔═╡ 7ba62ea3-cba2-4832-b1a3-4b291b66c1c7
+@printf "and error: %.2e\n" err0
+
+# ╔═╡ 8da1f8fa-42bf-4340-ab71-f06e8b480bce
+sol = solve(prob, NelderMead())
+
+# ╔═╡ 44c87ff4-9eaf-4dfa-b465-66ff8dbe992f
 begin
-	println("Starting coeffs")
-	println(CoeffMap(monotoneMap))
-	@printf "and error: %.2e\n" objective(CoeffMap(monotoneMap), [monotoneMap, x, reference_density])
-	# res = minimize(objective, CoeffMap(monotoneMap), args=(monotoneMap, x, reference_density), method="Nelder-Mead")
+	
+	u_final = sol.u
 	println("----------------------")
 	println("Final coeffs")
-	println(CoeffMap(monotoneMap))
-	@printf "and error: %.2e" objective(CoeffMap(monotoneMap), [monotoneMap, x, reference_density])
+	println(u_final)
+	err_final = objective(u_final, p)
+	@printf "and error: %.2e" err_final
 end
 
 # ╔═╡ 9263bcec-23bc-11ed-2199-4df8853fdced
@@ -132,6 +146,16 @@ begin
 	
 	fig2
 end
+
+# ╔═╡ f044086b-a5e2-485d-983a-4077ac1ccccf
+begin
+	p = monotoneMap, x, reference_density
+	u0 = CoeffMap(monotoneMap)
+	prob = OptimizationProblem(objective, u0, p)
+end
+
+# ╔═╡ 60aa8b4c-964c-453e-b205-5367b9eebc5e
+u0 = CoeffMap(monotoneMap)
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -159,7 +183,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.8.2"
 manifest_format = "2.0"
-project_hash = "f8053edac9cbe22febc5f9bf001a03cdf2176847"
+project_hash = "bcbcd193e76656661f63da829c65f459e429ad1e"
 
 [[deps.AbstractFFTs]]
 deps = ["ChainRulesCore", "LinearAlgebra"]
@@ -1633,8 +1657,8 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╠═926056c4-23bc-11ed-051f-5d11cd3b164d
-# ╠═92605714-23bc-11ed-301d-1d8c6476ed1f
+# ╟─926056c4-23bc-11ed-051f-5d11cd3b164d
+# ╟─92605714-23bc-11ed-301d-1d8c6476ed1f
 # ╠═683d5dc1-f954-4ca2-87c1-e400e6889921
 # ╠═8349bbf3-550d-4df0-9cc1-f490f72a3547
 # ╟─9262e772-23bc-11ed-062e-b35629702528
@@ -1648,7 +1672,14 @@ version = "3.5.0+0"
 # ╠═926340a0-23bc-11ed-3884-c5e84ce2fd05
 # ╟─92634b22-23bc-11ed-12d4-9f74f3d7dee5
 # ╠═92634b2c-23bc-11ed-0e80-03dfa76148a0
+# ╠═f044086b-a5e2-485d-983a-4077ac1ccccf
 # ╠═926399f6-23bc-11ed-209f-63816e8c6693
+# ╠═8c9f78ec-5f59-479a-b457-bbccff1a5445
+# ╠═60aa8b4c-964c-453e-b205-5367b9eebc5e
+# ╠═ce8b4ab7-e25c-4de1-af4c-a7a84302b049
+# ╠═7ba62ea3-cba2-4832-b1a3-4b291b66c1c7
+# ╠═8da1f8fa-42bf-4340-ab71-f06e8b480bce
+# ╠═44c87ff4-9eaf-4dfa-b465-66ff8dbe992f
 # ╟─9263bcec-23bc-11ed-2199-4df8853fdced
 # ╠═9263bd0c-23bc-11ed-3538-2f1e570cb9b3
 # ╟─00000000-0000-0000-0000-000000000001
