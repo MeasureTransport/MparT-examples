@@ -68,23 +68,18 @@ n_train = int(samples.shape[1]*0.8)
 
 samples_train = samples[:,:n_train]
 samples_test = samples[:,n_train:]
-
-
 # -
 
-samples_test.shape
+atm_opts=mt.ATMOptions()
+atm_opts.basisLB = -3
+atm_opts.basisUB = 3
+atm_opts.verbose = 1
 
-opts=mt.ATMOptions()
-opts.basisLB = -3
-opts.basisUB = 3
-opts.verbose = 1
+msets = [mt.MultiIndexSet.CreateTotalOrder(2,1)]
+obj = mt.CreateGaussianKLObjective(np.asfortranarray(samples_train),np.asfortranarray(samples_test),1)
+atm_map = mt.AdaptiveTransportMap(msets,obj,atm_opts)
 
-opts
-
-train_options
-
-atm_opts = mt.ATMOptions()
-
-atm_opts
+train_options = mpart.TrainOptions()
+mt.TrainMap()
 
 
