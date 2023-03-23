@@ -26,6 +26,8 @@ import mpart as mt
 print('Kokkos is using', mt.Concurrency(), 'threads')
 plt.rcParams['figure.dpi'] = 110
 
+np.random.seed(8)
+
 
 # -
 
@@ -80,14 +82,21 @@ plt.show()
 
 # +
 # Standardization of samples
-C = np.cov(samples_train);
-A = np.linalg.inv(np.linalg.cholesky(C));
-c = -1 * np.dot(A,np.mean(samples_train,axis=1));
+C = np.cov(samples_train)
+A = np.linalg.inv(np.linalg.cholesky(C))
+print(A)
+C = np.std(samples_train,axis=1)
+A = np.array([[1/C[0],0],[0,1/C[1]]])
+c = -1 * np.dot(A,np.mean(samples_train,axis=1))
 
 L = mt.AffineMap(np.asfortranarray(A),c)
 
 samples_train_st = L.Evaluate(samples_train)
 samples_test_st = L.Evaluate(samples_test)
+
+print(np.mean(samples_train_st))
+print(np.mean(samples_test_st))
+
 # -
 
 # Plot standardized samples
@@ -95,27 +104,48 @@ fig,ax = plt.subplots()
 ax.plot(samples_train_st[0,:],samples_train_st[1,:],'g.')
 plt.show()
 
+# +
+obj = mt.CreateGaussianKLObjective(np.asfortranarray(samples_train_st),np.asfortranarray(samples_test_st),2)
+map_options = mt.MapOptions()
+map_options.basisLB = -3
+map_options.basisUB = 3
+S = mt.CreateTriangular(2,2,2,map_options)
+
+print('train normal')
+# Train map
+train_options = mt.TrainOptions()
+train_options.verbose = 1
+train_options.opt_maxtime = 5
+
+# -
+
+mt.TrainMap(S, obj, train_options)
+
+# +
+X_std = S.Evaluate(samples_train_st)
+
+plt.figure()
+plt.plot(X_std[0,:],X_std[1,:],'r.')
+plt.show()
+
+# +
 atm_opts=mt.ATMOptions()
 atm_opts.basisLB = -3
 atm_opts.basisUB = 3
 atm_opts.verbose = 1
-atm_opts.maxSize = 15
+atm_opts.maxSize = 10
+msets = [mt.MultiIndexSet.CreateTotalOrder(1,1),mt.MultiIndexSet.CreateTotalOrder(2,1)]
 
-msets = [mt.MultiIndexSet.CreateTotalOrder(2,1)]
-obj = mt.CreateGaussianKLObjective(np.asfortranarray(samples_train_st),np.asfortranarray(samples_test_st),1)
+print('train ATM')
+
 [mset,atm_map] = mt.AdaptiveTransportMap(msets,obj,atm_opts)
 
 # +
-from scipy.stats import norm
+X_std2 = atm_map.Evaluate(samples_train_st)
 
-X_std = atm_map.Evaluate(samples_test)
-fig,ax = plt.subplots()
-ax.hist(X_std, density=True, bins=30, alpha=0.5, label='Sample Histogram')
-x_axis = np.linspace(-4, 4, 100)
-pdf = norm.pdf(x_axis)
-plt.plot(x_axis, pdf, color='r', label='Normal PDF')
+plt.figure()
+plt.plot(X_std2[0,:],X_std2[1,:],'r.')
+plt.show()
 # -
-
-X_std.shape
 
 
