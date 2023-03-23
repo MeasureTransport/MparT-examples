@@ -1,7 +1,7 @@
 clear
 close all
 
-addpath('~/Installations/MParT/matlab/')
+addpath(genpath('~/Installations/MParT/matlab/'))
 KokkosInitialize(8)
 
 sigma_w=2500;
@@ -45,13 +45,31 @@ atm_opts = ATMOptions();
 atm_opts.basisLB = -3;
 atm_opts.basisUB = 3;
 atm_opts.verbose = 1;
-atm_opts.maxSize = 3;
+atm_opts.maxSize = 20;
+atm_opts.maxDegrees = MultiIndex([8,8]);
 
-msets = [MultiIndexSet.CreateTotalOrder(1,1), MultiIndexSet.CreateTotalOrder(2,1)];
+msets = [MultiIndexSet.CreateTotalOrder(1,1),MultiIndexSet.CreateTotalOrder(2,1)];
 
 %% Minimization via ATM
-
 [S] = AdaptiveTransportMap(msets,obj,atm_opts);
+
+
+%% Normality test
+
+LS = ComposedMap([L,S]);
+
+X = LS.Evaluate(samples_train);
+
+figure
+hold on
+plot(X(1,:),X(2,:),'.b')
+
+
+%% Observations
+
+
+N=40;
+List_obs=sigma_eff(sigma_w,sigma_i,2)+randn(N,1);
 
 
 
