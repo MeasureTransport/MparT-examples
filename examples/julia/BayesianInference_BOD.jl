@@ -373,7 +373,7 @@ end
 
 # ╔═╡ 95526dd2-23bb-11ed-0084-2f374a59fcf3
 begin
-  fig2 = Figure()
+  fig2 = Figure(resolution=(1200,550), fontsize=24)
   ax21 = Axis(fig2[1, 1], xlabel=L"\theta_1", ylabel=L"\theta_2", title="Unnormalized Posterior")
   ax22 = Axis(fig2[1, 2], xlabel=L"\theta_1", ylabel=L"\theta_2", title="Transport Map Approximation")
   ax21.aspect = 1.0
@@ -393,7 +393,7 @@ A commonly used accuracy check when facing computation maps from density is the 
  \epsilon_\sigma = \frac{1}{2} \mathbb{V}\text{ar}_\rho \left[ \log \frac{\rho}{T^\sharp \bar{\pi}} \right]
 ```
 
-This diagnostic is asymptotically equivalent to the minimized KL divergence $D_{KL}(\eta || T^\sharp \pi)$ and should converge to zero when the computed map converge to the theoritical true map.
+This diagnostic is asymptotically equivalent to the minimized KL divergence $D_{KL}(\eta || T^\sharp \pi)$ and should converge to zero when the computed map converge to the theoretically true map.
 """
 
 # ╔═╡ 9552c50c-23bb-11ed-064d-8361c8366bad
