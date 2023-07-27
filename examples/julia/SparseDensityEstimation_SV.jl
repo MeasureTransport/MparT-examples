@@ -16,6 +16,7 @@ rng = Xoshiro(42) # Only works in Julia >= 1.7
 # ╔═╡ baab6b24-23c0-11ed-0602-bdb17d65ca9b
 md"""
 # Density estimation with sparse transport maps
+## This notebook (Julia version) is a work-in-progress
 """
 
 # ╔═╡ baab6b7e-23c0-11ed-2af3-c9584eeff5fd
@@ -40,11 +41,11 @@ md"""
 
 The problem considered here is a Markov process that describes the volatility on a financial asset overt time. The model depends on two hyperparamters $\mu$ and $\phi$ and state variable $Z_k$ represents log-volatility at times $k=1,...,T$. The log-volatility follows the order-one autoregressive process:
 ```math
-Z_{k+1} = \mu + \phi(Z_k-\mu) + \epsilon_k, k>1, 
+Z_{k+1} = \mu + \phi(Z_k-\mu) + \epsilon_k, k>1,
 ```
 where
 ```math
-\mu \sim \mathcal{N}(0,1) 
+\mu \sim \mathcal{N}(0,1)
 ```
 ```math
  \phi = 2\frac{\exp(\phi^*)}{1+\exp(\phi^*)}, \,\,\, \phi^* \sim \mathcal{N}(3,1)
@@ -55,7 +56,7 @@ where
 
 The objective is to characterize the joint density of
 ```math
-\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T), 
+\mathbf{X}_T = (\mu,\phi,Z_1,...,Z_T),
 ```
 with $T$ being arbitrarly large.
 """
@@ -125,7 +126,7 @@ Few realizations of the process look like
 begin
 	Nvisu = 10 #Number of samples
 	Xvisu = reduce(hcat, generate_SV_samples(d) for _ in 1:Nvisu)
-	
+
 	Zvisu = Xvisu[3:end,:]
 	plt_cols = ["#1f77b4", "#ff7f0e", "#2ca02c",
 				"#d62728", "#9467bd", "#8c564b",
@@ -254,7 +255,7 @@ From training samples generated with the known function we compare accuracy of t
 begin
 	N = 2000 #Number of training samples
 	X = reduce(hcat, generate_SV_samples(d) for _ in 1:N)
-	
+
 	Ntest = 5000 # Number of testing samples
 	Xtest = reduce(hcat, generate_SV_samples(d) for _ in 1:Ntest)
 end
@@ -294,42 +295,42 @@ begin
 	"""
 	function obj(coeffs,p)
 		tri_map,x = p
-	    
+
 	    num_points = size(x,2)
 	    SetCoeffs(tri_map, coeffs)
-	
+
 	    # Compute the map-induced density at each point
 	    map_of_x = Evaluate(tri_map, x)
 	    rho = MvNormal(I(outputDim(tri_map)))
 	    rho_of_map_of_x = logpdf(rho, map_of_x)
 	    log_det = LogDeterminant(tri_map, x)
-	
+
 	    # Return the negative log-likelihood of the entire dataset
 	    -sum(rho_of_map_of_x + log_det)/num_points
 	end
-	
+
 	"""
 	Returns the gradient of the log-likelihood
 	objective wrt the map parameters.
 	"""
 	function grad_obj(g, coeffs,p)
 		tri_map, x = p
-	    
+
 	    num_points = size(x,2)
 	    SetCoeffs(tri_map, coeffs)
-	
+
 	    # Evaluate the map
 	    map_of_x = Evaluate(tri_map, x)
-	
+
 	    # Now compute the inner product of the
 		# map jacobian (\nabla_w S) and the gradient
 		# (which is just -S(x) here)
 	    grad_rho_of_map_of_x = -CoeffGrad(tri_map, x, map_of_x)
-	
+
 	    # Get the gradient of the log determinant
 		# with respect to the map coefficients
 	    grad_log_det = LogDeterminantCoeffGrad(tri_map, x)
-	
+
 	    g .= -vec(sum(grad_rho_of_map_of_x + grad_log_det, dims=2))/num_points
 	end
 
@@ -367,15 +368,15 @@ begin
 	    Xtrain = X[1:dk,:]
 	    Xtestk = Xtest[1:dk,:]
 		p = (S,Xtrain)
-		
+
 	    ListCoeffs_to1[dk-1]=numCoeffs(S)
 		fcn = OptimizationFunction(obj, grad=grad_obj)
 		prob = OptimizationProblem(fcn, CoeffMap(S), p)
 	    res = solve(prob, BFGS(), g_tol=1e-3)
-	
+
 	    # Reference density
 	    eta = MvNormal(I(outputDim(S)))
-	
+
 	    # Compute log-conditional density at testing samples
 	    logPdfTM_to1[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
 	end
@@ -436,15 +437,15 @@ begin
 	    Xtrain = X[1:dk,:]
 	    Xtestk = Xtest[1:dk,:]
 		p = (S,Xtrain)
-		
+
 		ListCoeffs_to2[dk-1]=numCoeffs(S)
 		fcn = OptimizationFunction(obj, grad=grad_obj)
 		prob = OptimizationProblem(fcn, CoeffMap(S), p)
 		res = solve(prob, BFGS(), g_tol=1e-3)
-	
+
 	    # Reference density
 	    eta = MvNormal(I(outputDim(S)))
-	
+
 	    # Compute log-conditional density at testing samples
 	    logPdfTM_to2[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
 	end
@@ -527,10 +528,10 @@ begin
 	totalOrder3 = 2
 	logPdfTM_sa = zeros(d,Ntest)
 	ListCoeffs_sa = zeros(d-1)
-	
+
 	# MultiIndexSet for map S_k, k .>3
 	mset_to= CreateTotalOrder(4,totalOrder3)
-	
+
 	maxOrder=9 # order for map S_2
 	start3 = time_ns()
 	@progress "Map component" for dk in 2:d
@@ -563,13 +564,13 @@ begin
 	        Xtestk = Xtest[1:dk,:]
 		end
 		p = (S,Xtrain)
-		
+
 		ListCoeffs_sa[dk-1]=numCoeffs(S)
 		fcn = OptimizationFunction(obj, grad=grad_obj)
 		prob = OptimizationProblem(fcn, CoeffMap(S), p)
 		res = solve(prob, BFGS(), 1e-3)
 
-		rho = MvNormal(I(outputDim(S)))    
+		rho = MvNormal(I(outputDim(S)))
 	    logPdfTM_sa[dk-1,:]=log_cond_pullback_pdf(S,rho,Xtestk)
 	end
 	end3 = time_ns()
