@@ -12,4 +12,4 @@ dependencies:
   - pandas
   - matplotlib
   - tqdm
-  - torch
+  - pytorch
