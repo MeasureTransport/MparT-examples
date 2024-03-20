@@ -15,6 +15,7 @@
 
 # # Monotone least squares 
 # The objective of this example is to show how to build a transport map to solve monotone regression problems using MParT.
+
 # ## Problem formulation
 # One direct use of the monotonicity property given by the transport map approximation to model monotone functions from noisy data. This is called isotonic regression and can be solved in our setting by minimizing the least squares objective function
 #
@@ -49,7 +50,7 @@ plt.rcParams['figure.dpi'] = 110
 #
 # ### True model
 #
-# Here we choose to use the step function $H(x)=\text{sgn}(x-2)+1$ as the reference monotone function. It is worth noting that this function is not strictly monotone and piecewise continuous.
+# Here we choose to use the step function $H(x)=\text{sgn}(x-2)+1$ as the reference monotone function. It is worth noting that this function is not strictly monotone and is only piecewise continuous.
 
 # +
 # variation interval
@@ -102,7 +103,7 @@ fixed_mset = mset.fix(True)
 
 # Set options and create map object
 opts = mt.MapOptions()
-opts.quadMinSub = 4;
+opts.quadMinSub = 4
 
 monotone_map = mt.CreateComponent(fixed_mset, opts)
 # -
@@ -114,7 +115,7 @@ monotone_map = mt.CreateComponent(fixed_mset, opts)
 map_of_x_before = monotone_map.Evaluate(x)
 error_before = np.sum((map_of_x_before - y_measured)**2)/x.shape[1]
 
-# Plot data (before and after apart)
+# Plot data and initial approximation
 plt.figure()
 plt.title('Starting map error: {:.2E}'.format(error_before))
 plt.plot(x.flatten(),y_true.flatten(),'*--',label='true data', alpha=0.8)

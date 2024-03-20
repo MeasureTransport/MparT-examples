@@ -9,14 +9,14 @@ mkdir .installations
 mkdir .work
 cd .work
 
-git clone https://github.com/kokkos/kokkos.git
+git clone --depth=1 --branch 3.7.00 https://github.com/kokkos/kokkos.git
 mkdir kokkos/build
 cd kokkos/build
 cmake -DCMAKE_INSTALL_PREFIX=$PREFIX \
           -DKokkos_ENABLE_SERIAL=ON \
           -DKokkos_ENABLE_OPENMP=ON \
           -DBUILD_SHARED_LIBS=ON    \
-          -DKokkos_CXX_STANDARD=17  \
+          -DCMAKE_CXX_STANDARD=17  \
 ../
 make install
 
@@ -36,11 +36,4 @@ rm -rf ~/.work
 jupyter lab build
 
 cd ~/examples/python
-
-export PYTHONPATH=$PYTHONPATH:$PREFIX/python
-
-jupytext --set-formats ipynb,py MonotoneLeastSquares.py
-jupyter nbconvert --ExecutePreprocessor.timeout=600 --to notebook --execute MonotoneLeastSquares.ipynb
-
-jupytext --set-formats ipynb,py StochasticVolatility.py
-jupyter nbconvert --ExecutePreprocessor.timeout=3600 --to notebook --execute StochasticVolatility.ipynb
+for i in *.py;do jupytext --set-formats ipynb,py $i; done

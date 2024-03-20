@@ -15,6 +15,7 @@
 
 # # Transport map from samples
 # The objective of this example is to show how a transport map can be build in MParT when samples from the target density are known.
+
 # ## Problem formulation
 # From the definition of a transport map, the *function* $S(\mathbf{x}; \mathbf{w})$ is invertible and have a positive definite Jacobian for any parameters $w$.  Combined with a probability density $\eta(\mathbf{r})$, we 
 # can therefore define a density $\tilde{\pi}_w(x)$ induced by transforming $r$ with the inverse map $S^{-1}(\mathbf{r})$.   More precisely, the change of random variable formula from the reference $\eta$ to the target $\tilde{\pi}$ reads: 
@@ -239,7 +240,7 @@ plt.ylabel('$r_2$')
 plt.show()
 
 
-# Print initial coeffs and objective
+# Print initial coeffs and objective values
 print('==================')
 print('Starting coeffs component 1:')
 print(S1.CoeffMap())
@@ -275,17 +276,12 @@ res = minimize(obj, S2.CoeffMap(), args=(S2, x), jac=grad_obj, method='BFGS', op
 #
 #
 
-# Building triangular map from components:
-
-transport_map = mt.TriangularMap((S1,S2))
-transport_map.SetCoeffs(np.concatenate((S1.CoeffMap(),S2.CoeffMap())))
-
-# Transport of testing samples from target:
+# Coefficients of `transport_map` are now updated, let's transport testing samples again:
 
 r_test_after_opt = transport_map.Evaluate(test_x)
 
 # +
-# Before optimization plot
+# After optimization plot
 plt.figure()
 plt.title('After optimization')
 plt.contour(*grid, ref_pdf_at_grid)
@@ -310,7 +306,7 @@ print('==================')
 
 # After optimization testing samples are visually distributed according to the standard normal which tell us that the map has been computed accurately. Another estimation of the approximation quality is to test normality of the pushed samples. One simple way to do that is to compute first moments of the pushed test samples:
 
-# Print statistics of normalized samples (TODO replace with better Gaussianity check)
+# Print statistics of normalized samples 
 print('==================')
 mean_of_map = np.mean(r_test_after_opt,1)
 print("Mean of normalized test samples")

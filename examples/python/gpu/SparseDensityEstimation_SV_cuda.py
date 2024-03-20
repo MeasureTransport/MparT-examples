@@ -18,7 +18,7 @@
 # In this example we demonstrate how MParT can be use to build map with certain sparse structure in order to characterize high dimensional densities with conditional independence.
 
 # ## Imports
-# First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
+# First, import MParT and other packages used in this notebook.
 
 # +
 import numpy as np
@@ -26,9 +26,6 @@ from scipy.optimize import minimize
 import matplotlib.pyplot as plt
 from scipy.stats import multivariate_normal
 from tqdm import tqdm
-
-import os
-os.environ['KOKKOS_NUM_THREADS'] = '8'
 
 import mpart as mt
 print('Kokkos is using', mt.Concurrency(), 'threads')
@@ -100,7 +97,6 @@ Zvisu = Xvisu[2:,:]
 plt.figure()
 plt.plot(Zvisu)
 plt.xlabel("Days (d)")
-plt.show()
 # -
 
 # And corresponding realization of hyperparameters
@@ -258,8 +254,8 @@ totalOrder = 1
 logPdfTM_to1 = np.zeros((d,Ntest))
 ListCoeffs_to1=np.zeros((d,))
 for dk in tqdm(range(1,d+1),desc="Map component"):
-    fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder)
-    S = mt.CreateComponent(fixed_mset,opts)
+    fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder).ToDevice()
+    S = mt.dCreateComponent(fixed_mset,opts)
     Xtrain = X[:dk,:]
     Xtestk = Xtest[:dk,:]
 
@@ -294,43 +290,43 @@ def compute_joint_KL(logPdfSV,logPdfTM):
 KL_to1 = compute_joint_KL(logPdfSV,logPdfTM_to1)
 # -
 
-# ### Training total order 2 map
+# # ### Training total order 2 map
 
-# Here we use a total order 2 multivariate expansion to parameterize each component $S_k$, $k \in \{1,...,T+2\}$.
+# # Here we use a total order 2 multivariate expansion to parameterize each component $S_k$, $k \in \{1,...,T+2\}$.
 
-# #### Optimization
-#
-# This step can take few minutes depending on the number of time steps set at the definition of the problem.
+# # #### Optimization
+# #
+# # This step can take few minutes depending on the number of time steps set at the definition of the problem.
 
-# +
-# Total order 2 approximation
-totalOrder = 2
-logPdfTM_to2 = np.zeros((d,Ntest))
-ListCoeffs_to2=np.zeros((d,))
-for dk in tqdm(range(1,d+1),desc="Map component"):
-    fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder)
-    S = mt.CreateComponent(fixed_mset,opts)
-    Xtrain = X[:dk,:]
-    Xtestk = Xtest[:dk,:]
+# # +
+# # Total order 2 approximation
+# totalOrder = 2
+# logPdfTM_to2 = np.zeros((d,Ntest))
+# ListCoeffs_to2=np.zeros((d,))
+# for dk in tqdm(range(1,d+1),desc="Map component"):
+#     fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder).ToDevice()
+#     S = mt.dCreateComponent(fixed_mset,opts)
+#     Xtrain = X[:dk,:]
+#     Xtestk = Xtest[:dk,:]
 
-    ListCoeffs_to2[dk-1]=S.numCoeffs
+#     ListCoeffs_to2[dk-1]=S.numCoeffs
 
-    options={'gtol': 1e-3, 'disp': False}
-    res = minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
+#     options={'gtol': 1e-3, 'disp': False}
+#     res = minimize(obj, S.CoeffMap(), args=(S, Xtrain), jac=grad_obj, method='BFGS', options=options)
     
-    # Reference density
-    eta = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
+#     # Reference density
+#     eta = multivariate_normal(np.zeros(S.outputDim),np.eye(S.outputDim))
 
-    # Compute log-conditional density at testing samples
-    logPdfTM_to2[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
+#     # Compute log-conditional density at testing samples
+#     logPdfTM_to2[dk-1,:]=log_cond_pullback_pdf(S,eta,Xtestk)
 
-# -
+# # -
 
 
-# #### Compute KL divergence error
+# # #### Compute KL divergence error
 
-# Compute joint KL divergence for total order 2 approximation
-KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
+# # Compute joint KL divergence for total order 2 approximation
+# KL_to2 = compute_joint_KL(logPdfSV,logPdfTM_to2)
 
 # ### Training sparse map
 
@@ -379,18 +375,18 @@ mset_to= mt.MultiIndexSet.CreateTotalOrder(4,totalOrder,mt.NoneLim())
 maxOrder=9 # order for map S_2
 for dk in tqdm(range(1,d+1),desc="Map component"):
     if dk == 1:
-        fixed_mset= mt.FixedMultiIndexSet(1,totalOrder)
-        S = mt.CreateComponent(fixed_mset,opts)
+        fixed_mset= mt.FixedMultiIndexSet(1,totalOrder).ToDevice()
+        S = mt.dCreateComponent(fixed_mset,opts)
         Xtrain = X[dk-1,:].reshape(1,-1)
         Xtestk = Xtest[dk-1,:].reshape(1,-1)
     elif dk == 2:
-        fixed_mset= mt.FixedMultiIndexSet(1,maxOrder)
-        S = mt.CreateComponent(fixed_mset,opts)
+        fixed_mset= mt.FixedMultiIndexSet(1,maxOrder).ToDevice()
+        S = mt.dCreateComponent(fixed_mset,opts)
         Xtrain = X[dk-1,:].reshape(1,-1)
         Xtestk = Xtest[dk-1,:].reshape(1,-1) 
     elif dk==3:
-        fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder)
-        S = mt.CreateComponent(fixed_mset,opts)
+        fixed_mset= mt.FixedMultiIndexSet(dk,totalOrder).ToDevice()
+        S = mt.dCreateComponent(fixed_mset,opts)
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
     else:
@@ -400,8 +396,8 @@ for dk in tqdm(range(1,d+1),desc="Map component"):
             multis[s,:2]=multis_to[0,:2]
             multis[s,-2:]=multis_to[0,-2:]
         mset = mt.MultiIndexSet(multis)
-        fixed_mset = mset.fix(True)
-        S = mt.CreateComponent(fixed_mset,opts)
+        fixed_mset = mset.fix(True).ToDevice()
+        S = mt.dCreateComponent(fixed_mset,opts)
         Xtrain = X[:dk,:]
         Xtestk = Xtest[:dk,:]
 
@@ -426,7 +422,7 @@ KL_sa = compute_joint_KL(logPdfSV,logPdfTM_sa)
 # Compare map approximations 
 fig, ax = plt.subplots()
 ax.plot(range(1,d+1),KL_to1,'-o',label='Total order 1')
-ax.plot(range(1,d+1),KL_to2,'-o',label='Total order 2')
+#ax.plot(range(1,d+1),KL_to2,'-o',label='Total order 2')
 ax.plot(range(1,d+1),KL_sa,'-o',label='Sparse MultiIndexSet')
 ax.set_yscale('log')
 ax.set_xlabel('d')
@@ -444,7 +440,7 @@ plt.show()
 
 fig, ax =plt.subplots()
 ax.plot(range(1,d+1),ListCoeffs_to1,'-o',label='Total order 1')
-ax.plot(range(1,d+1),ListCoeffs_to2,'-o',label='Total order 2')
+#ax.plot(range(1,d+1),ListCoeffs_to2,'-o',label='Total order 2')
 ax.plot(range(1,d+1),ListCoeffs_sa,'-o',label='Sparse MultiIndexSet')
 ax.set_xlabel('d')
 ax.set_ylabel('# coefficients')
