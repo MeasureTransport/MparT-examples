@@ -4,177 +4,496 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 8349bbf3-550d-4df0-9cc1-f490f72a3547
-using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, GLMakie, Printf
+# ╔═╡ 954d857e-23bb-11ed-379f-bf59db6edf0e
+using Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, CairoMakie, SpecialFunctions, Random, Colors, ColorSchemes
 
-# ╔═╡ 926056c4-23bc-11ed-051f-5d11cd3b164d
-md"""
-# Construct map from density
-
-One way to construct a transport map is from an unnormalized density.
-"""
-
-# ╔═╡ 92605714-23bc-11ed-301d-1d8c6476ed1f
-md"""
-First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable before importing MParT.
-"""
-
-# ╔═╡ 683d5dc1-f954-4ca2-87c1-e400e6889921
-ENV["KOKKOS_NUM_THREADS"] = 2
-
-# ╔═╡ 9262e772-23bc-11ed-062e-b35629702528
-md"""
-The target distribution is given by $x\sim\mathcal{N}(2, 0.5)$.
-"""
-
-# ╔═╡ 9262e7ae-23bc-11ed-09c3-c7e561e39567
+# ╔═╡ a1580c3a-1d78-4713-a984-efac1b21e2af
 begin
-	num_points = 5000
-	mu = 2
-	sigma = .5
-	x = randn(1,num_points)
-end;
-
-# ╔═╡ 9262fc26-23bc-11ed-22a5-a16caa625403
-md"""
-As the reference density we choose the standard normal.
-"""
-
-# ╔═╡ 9262fc38-23bc-11ed-22ec-7b2712b1066a
-begin
-	reference_density = Normal(mu,sigma)
-	t = range(-3,6,100)
-	rho_t = pdf.(reference_density, t)
+  rng = Xoshiro(42) # Requires Julia >=1.7
+  mpart_num_threads = 2
+  ENV["KOKKOS_NUM_THREADS"] = mpart_num_threads
+  using MParT
 end
 
-# ╔═╡ 92630aae-23bc-11ed-2419-5742d1372248
-begin
-	fig1 = Figure()
-	ax1 = Axis(fig1[1,1], title="Before Optimization")
-	hist!(ax1, vec(x), color=(:red,0.5), density=true, label="Reference samples", normalization=:pdf)
-	lines!(ax1, t, rho_t,label="Target density")
-	scatter!(ax1, t, rho_t,label="Target density")
-	axislegend()
-	fig1
-end
-
-# ╔═╡ 92632f84-23bc-11ed-29e2-8527d45df4f5
+# ╔═╡ 954d8600-23bb-11ed-3afb-79985341ba63
 md"""
-Next we create a multi-index set and create a map. Affine transform should be enough to capture the Gaussian target.
+# Characterization of Bayesian posterior density
 """
 
-# ╔═╡ 92632fa2-23bc-11ed-1471-e57a86ed9827
-begin
-	multis = [0;1]
-	mset = MultiIndexSet(multis)
-	fixed_mset = Fix(mset, true)
-end;
-
-# ╔═╡ 92634078-23bc-11ed-2f69-9b0e8f468495
+# ╔═╡ 954d8650-23bb-11ed-08e0-35522a6e6112
 md"""
-Now we set the map options (default in this case) and initialize the map
+The objective of this example is to demonstrate how transport maps can be used to represent posterior distribution of Bayesian inference problems.
 """
 
-# ╔═╡ 926340a0-23bc-11ed-3884-c5e84ce2fd05
-begin
-	opts = MapOptions()
-	monotoneMap = CreateComponent(fixed_mset, opts)
-end
-
-# ╔═╡ 92634b22-23bc-11ed-12d4-9f74f3d7dee5
+# ╔═╡ 954d8658-23bb-11ed-0104-fd19bf60c5af
 md"""
-Next we optimize the coefficients of the map by minimizing the Kullback–Leibler divergence between the target and reference density.
+## Imports
+First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable **before** importing MParT.
 """
 
-# ╔═╡ 92634b2c-23bc-11ed-0e80-03dfa76148a0
-function objective(coeffs,p)
-	monotoneMap, x, rv = p
-    num_points = size(x,1)
-    SetCoeffs(monotoneMap, coeffs)
-    map_of_x = Evaluate(monotoneMap, x)
-    pi_of_map_of_x = logpdf.(rv, map_of_x)
-    log_det = LogDeterminant(monotoneMap, x)
-    -sum(vec(pi_of_map_of_x) + log_det)/num_points
-end
-
-# ╔═╡ f044086b-a5e2-485d-983a-4077ac1ccccf
-begin
-	p = monotoneMap, x, reference_density
-	u0 = CoeffMap(monotoneMap)
-	prob = OptimizationProblem(objective, u0, p)
-end
-
-# ╔═╡ 926399f6-23bc-11ed-209f-63816e8c6693
-println("Starting coeffs")
-
-# ╔═╡ 8c9f78ec-5f59-479a-b457-bbccff1a5445
-println(CoeffMap(monotoneMap))
-
-# ╔═╡ 60aa8b4c-964c-453e-b205-5367b9eebc5e
-u02 = CoeffMap(monotoneMap)
-
-# ╔═╡ ce8b4ab7-e25c-4de1-af4c-a7a84302b049
-err0 = objective(u02, p)
-
-# ╔═╡ 7ba62ea3-cba2-4832-b1a3-4b291b66c1c7
-@printf "and error: %.2e\n" err0
-
-# ╔═╡ 8da1f8fa-42bf-4340-ab71-f06e8b480bce
-sol = solve(prob, NelderMead())
-
-# ╔═╡ 44c87ff4-9eaf-4dfa-b465-66ff8dbe992f
-begin
-	
-	u_final = sol.u
-	println("----------------------")
-	println("Final coeffs")
-	println(u_final)
-	err_final = objective(u_final, p)
-	@printf "and error: %.2e" err_final
-end
-
-# ╔═╡ 9263bcec-23bc-11ed-2199-4df8853fdced
+# ╔═╡ 955024f0-23bb-11ed-185c-b3f673bbe699
 md"""
-...and plot the results.
+## Problem formulation
+### Bayesian inference
+A way construct a transport map is from an unnormalized density. One situation where we know the probality density function up to a normalization constant is when modeling inverse problems with Bayesian inference.
+
+For an inverse problem, the objective is to characterize the value of some parameters $\boldsymbol{\theta}$ of a given system, knowing some the value of some noisy observations $\mathbf{y}$.
+
+With Bayesian inference, the characterization of parameters $\boldsymbol{\theta}$ is done via a *posterior* density $\pi(\boldsymbol{\theta}|\mathbf{y})$. This density characterizes the distribution of the parameters knowing the value of the observations.
+
+Using Bayes' rule, the posterior can decomposed into the product of two probability densities:
+
+1.   The prior density $\pi(\boldsymbol{\theta})$ which is used to enforce any *a priori* knowledge about the parameters.
+2.   The likelihood function $\pi(\mathbf{y}|\boldsymbol{\theta})$. This quantity can be seen as a function of $\boldsymbol{\theta}$ and gives the likelihood that the considered system produced the observation $\mathbf{y}$ for a fixed value of $\boldsymbol{\theta}$. When the model that describes the system is known in closed form, the likelihood function is also knwon in closed form.
+
+Hence, the posterior density reads:
+
+```math
+\pi(\boldsymbol{\theta}|\mathbf{y}) = \frac{1}{c} \pi(\mathbf{y}|\boldsymbol{\theta}) \pi(\boldsymbol{\theta})
+```
+
+where $c = \int \pi(\mathbf{y}|\boldsymbol{\theta}) \pi(\boldsymbol{\theta}) d\theta$ is an normalizing constant that ensures that the product of the two quantities is a proper density.  Typically, the integral in this definition cannot be evaluated and $c$ is assumed to be unknown.
 """
 
-# ╔═╡ 9263bd0c-23bc-11ed-3538-2f1e570cb9b3
-begin
-	map_of_x = Evaluate(monotoneMap, x)
-	fig2 = Figure()
-	ax21 = Axis(fig2[1,1], title="After Optimization")
-	ax22 = Axis(fig2[2,1])
-	hist!(ax21, vec(x), color=(:red,0.5), normalization=:pdf, label="Reference samples")
-	hist!(ax21, vec(map_of_x), color=(:blue, 0.5), normalization=:pdf, label="Mapped samples")
-	scatterlines!(ax21, t, rho_t, label="Target density")
-	axislegend(ax21)
+# ╔═╡ 9550257c-23bb-11ed-0959-2becda31f4a3
+md"""
+The objective of this examples is, from the knowledge of $\pi(\mathbf{y}|\boldsymbol{\theta})\pi(\boldsymbol{\theta})$ build a transport map that transports samples from the reference $\eta$ to samples from posterior $\pi(\boldsymbol{\theta}|\mathbf{y})$.
+"""
 
-	hist!(ax22, vec(x), color=(:red,0.5), normalization=:pdf, label="Reference samples")
-	hist!(ax22, vec(map_of_x), color=(:blue, 0.5), normalization=:pdf, label="Mapped samples")
-	scatterlines!(ax22, t, cdf.(reference_density, t), label="Target CDF")
-	axislegend(ax22)
-	
-	fig2
+# ╔═╡ 95502586-23bb-11ed-2dcd-7329ebb64ff0
+md"""
+### Application with the Biochemical Oxygen Demand (BOD) model from [[Sullivan et al., 2010]](https://or.water.usgs.gov/proj/keno_reach/download/chemgeo_bod_final.pdf)
+
+#### Definition
+
+To illustrate the process describe above, we consider the BOD inverse problem described in [[Marzouk et al., 2016]](https://arxiv.org/pdf/1602.05023.pdf).   The goal is to estimate $2$ coefficients in a time-dependent model of oxygen demand, which is used as an indication of biological activity in a water sample.
+
+The time dependent forward model is defined as
+
+```math
+\mathcal{B}(t) = A(1-\exp(-Bt))+\mathcal{E},
+```
+
+where
+
+```math
+\begin{aligned}
+\mathcal{E} & \sim \mathcal{N}(0,1e-3)\\
+A & = \left[0.4 + 0.4\left(1 + \text{erf}\left(\frac{\theta_1}{\sqrt{2}} \right)\right) \right]\\
+B & = \left[0.01 + 0.15\left(1 + \text{erf}\left(\frac{\theta_2}{\sqrt{2}} \right)\right) \right]
+\end{aligned}
+```
+
+The objective is to characterize the posterior density of parameters $\boldsymbol{\theta}=(\theta_1,\theta_2)$ knowing observation of the system at time $t=\left\{1,2,3,4,5 \right\}$ i.e. $\mathbf{y} = (y_1,y_2,y_3,y_4,y_5) = (\mathcal{B}(1),\mathcal{B}(2),\mathcal{B}(3),\mathcal{B}(4),\mathcal{B}(5))$.
+"""
+
+# ╔═╡ 955025ea-23bb-11ed-2bf3-038f89b70ae3
+md"""
+Definition of the forward model and gradient with respect to $\mathbf{\theta}$:
+"""
+
+# ╔═╡ 955025f4-23bb-11ed-2332-7b5583ceb8b4
+begin
+  function forward_model(p1, p2, t)
+    A = 0.4 + 0.4 * (1 + erf(p1 / sqrt(2)))
+    B = 0.01 + 0.15 * (1 + erf(p2 / sqrt(2)))
+    out = A * (1 - exp(-B * t))
+    out
+  end
+
+  function grad_x_forward_model(p1, p2, t)
+    A = 0.4 + 0.4 * (1 + erf(p1 / sqrt(2)))
+    B = 0.01 + 0.15 * (1 + erf(p2 / sqrt(2)))
+    dAdx1 = 0.31954 * exp(-0.5 * p1 .^ 2)
+    dBdx2 = 0.119683 * exp(-0.5 * p2 .^ 2)
+    dOutdx1 = dAdx1 * (1 - exp(-B * t))
+    dOutdx2 = t * A * dBdx2 * exp(-t * B)
+    vcat(dOutdx1, dOutdx2)
+  end
+end
+
+# ╔═╡ 9550755e-23bb-11ed-0a8a-e9249a94e917
+md"""
+One simulation of the forward model:
+"""
+
+# ╔═╡ 9550757c-23bb-11ed-163d-0bc0ea8f5239
+begin
+  t = range(0, 10, 100)
+  fig0 = Figure()
+  ax0 = Axis(fig0[1, 1])
+  lines!(ax0, t, forward_model.(1, 1, t))
+  scatter!(ax0, t, forward_model.(1, 1, t))
+  ax0.xlabel = "t"
+  ax0.ylabel = "BOD"
+  fig0
+end
+
+# ╔═╡ 955090cc-23bb-11ed-3513-57f02bb737ea
+md"""
+For this problem, as noise $\mathcal{E}$ is Gaussian and additive, the likelihood function $\pi(\mathbf{y}|\boldsymbol{\theta})$, can be decomposed for each time step as:
+```math
+\pi(\mathbf{y}|\boldsymbol{\theta}) = \prod_{t}^{5} \pi(y_t|\boldsymbol{\theta}),
+```
+where
+```math
+\pi(\mathbf{y}_t|\boldsymbol{\theta})=\frac{1}{\sqrt{0.002.\pi}}\exp \left(-\frac{1}{0.002} \left(y_t - \mathcal{B}(t)\right)^2 \right), t \in \{1,...,5\}.
+```
+"""
+
+# ╔═╡ 9550911a-23bb-11ed-1e50-c7956d97df01
+md"""
+Likelihood function and its gradient with respect to parameters:
+"""
+
+# ╔═╡ 95509124-23bb-11ed-0191-cbc0b0146cc7
+begin
+  function log_likelihood(std_noise, t, yobs, p1, p2)
+    y = forward_model(p1, p2, t)
+    log_lkl = -log(sqrt(2 * pi) * std_noise) - 0.5 * ((y - yobs) / std_noise)^2
+    log_lkl
+  end
+
+  function grad_x_log_likelihood(std_noise, t, yobs, p1, p2)
+    y = forward_model(p1, p2, t)
+    dydx = grad_x_forward_model(p1, p2, t)
+    grad_x_lkl = (-1 / std_noise^2) * (y - yobs) * dydx
+    grad_x_lkl
+  end
+end
+
+# ╔═╡ 9550cb82-23bb-11ed-22db-f925cb8b7d63
+md"""
+We can then define the unnormalized posterior and its gradient with respect to parameters:
+"""
+
+# ╔═╡ 9550cb94-23bb-11ed-3489-3f3450a778a0
+begin
+  function log_posterior(std_noise, std_prior1, std_prior2, list_t, list_yobs, p1, p2)
+    log_prior1 = -log(sqrt(2 * pi) * std_prior1) - 0.5 * (p1 / std_prior1)^2
+    log_prior2 = -log(sqrt(2 * pi) * std_prior2) - 0.5 * (p2 / std_prior2)^2
+    log_posterior = log_prior1 + log_prior2
+    for (k, t) in enumerate(list_t)
+      log_posterior += log_likelihood(std_noise, t, list_yobs[k], p1, p2)
+    end
+    log_posterior
+  end
+
+  function grad_x_log_posterior(std_noise, std_prior1, std_prior2, list_t, list_yobs, p1, p2)
+    grad_x1_prior = -(1 / std_prior1 .^ 2) * (p1)
+    grad_x2_prior = -(1 / std_prior2 .^ 2) * (p2)
+    grad_x_prior = vcat(grad_x1_prior, grad_x2_prior)
+    grad_x_log_posterior = grad_x_prior
+    for (k, t) in enumerate(list_t)
+      grad_x_log_posterior += grad_x_log_likelihood(std_noise, t, list_yobs[k], p1, p2)
+    end
+    grad_x_log_posterior
+  end
+end
+
+# ╔═╡ 955137de-23bb-11ed-08be-77012cac7bd9
+md"""
+#### Observations
+
+We consider the following realization of observation $\mathbf{y}$:
+"""
+
+# ╔═╡ 95513804-23bb-11ed-153a-4f9809a0bc9d
+begin
+  list_t = [1, 2, 3, 4, 5]
+  list_yobs = [0.18, 0.32, 0.42, 0.49, 0.54]
+
+  std_noise = sqrt(1e-3)
+  std_prior1 = 1
+  std_prior2 = 1
+end
+
+# ╔═╡ 95515618-23bb-11ed-0b45-cfaf024382b0
+md"""
+#### Visualization of the **unnormalized** posterior density
+"""
+
+# ╔═╡ 52bdd1c1-6e8a-4adc-acbb-ccc3a71b5605
+begin
+  Ngrid = 100
+  x = range(-0.5, 1.25, Ngrid)
+  y = range(-0.5, 2.5, Ngrid)
+  X = repeat(x', Ngrid, 1)
+  Y = repeat(y, 1, Ngrid)
+  Z_eval = (x, y) -> log_posterior(std_noise, std_prior1, std_prior2, list_t, list_yobs, x, y)
+  Z = exp.(Z_eval.(X, Y))
+end
+
+# ╔═╡ 9551562c-23bb-11ed-2be1-93c303957fd2
+begin
+  fig1 = Figure()
+  ax1 = Axis(fig1[1, 1], xlabel=L"\theta_1", ylabel=L"\theta_2", title="Unnormalized density")
+  CS = contour!(ax1, vec(X), vec(Y), vec(Z))
+  fig1
+end
+
+# ╔═╡ 9551a47e-23bb-11ed-0695-979c1f145d52
+md"""
+Target density for the map from density is non-Gaussian which means that a non linear map will be required to achieve good approximation.
+"""
+
+# ╔═╡ 9551a492-23bb-11ed-20d2-3f8674c9579c
+md"""
+## Map computation
+"""
+
+# ╔═╡ 9551a4a6-23bb-11ed-0117-6bf451a9bc15
+md"""
+After the definition of the log-posterior and gradient, the construction of the desired map $T$ to characterize the posterior density result in a "classic" map from unnormalized computation.
+"""
+
+# ╔═╡ 9551a4b0-23bb-11ed-31a5-051dcf2c9d0a
+md"""
+### Definition of the objective function:
+
+Knowing the closed form of unnormalized posterior $\bar{\pi}(\boldsymbol{\theta} |\mathbf{y})= \pi(\mathbf{y}|\boldsymbol{\theta})\pi(\boldsymbol{\theta})$, the objective is to find a map-induced density $\tilde{\pi}_{\mathbf{w}}(\mathbf{x})$ that is a good approximation to the posterior $\pi(\boldsymbol{\theta} |\mathbf{y})$.
+
+In order to characterize this posterior density, one method is to build a transport map.
+
+For the map from unnormalized density estimation, the objective function on parameter $\mathbf{w}$ reads:
+
+```math
+J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) + \log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d),
+```
+
+where $T$ is the transport map pushing forward the standard normal $\mathcal{N}(\mathbf{0},\mathbf{I}_d)$ to the target density $\pi(\mathbf{x})$, which will be the the posterior density.  The gradient of this objective function reads:
+
+```math
+\nabla_\mathbf{w} J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \nabla_\mathbf{w} T(\mathbf{z}^i;\mathbf{w}).\nabla_\mathbf{x}\log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) + \nabla_{\mathbf{w}}\log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d).
+```
+"""
+
+# ╔═╡ 9551a528-23bb-11ed-0b28-fdca4891dd0e
+begin
+  function grad_x_log_target(x)
+    out = grad_x_log_posterior(std_noise, std_prior1, std_prior2, list_t, list_yobs, x[1], x[2])
+    out
+  end
+
+  function log_target(x)
+    out = log_posterior(std_noise, std_prior1, std_prior2, list_t, list_yobs, x[1], x[2])
+    out
+  end
+
+  function obj(coeffs, p)
+    tri_map, x = p
+    num_points = size(x, 2)
+    SetCoeffs(tri_map, coeffs)
+    map_of_x = Evaluate(tri_map, x)
+    rho_of_map_of_x = sum(log_target(y) for y in eachcol(map_of_x))
+    log_det = sum(LogDeterminant(tri_map, x))
+    -(rho_of_map_of_x + log_det) / num_points
+  end
+
+  function grad_obj!(g, coeffs, p)
+    tri_map, x = p
+    num_points = size(x, 2)
+    SetCoeffs(tri_map, coeffs)
+    map_of_x = Evaluate(tri_map, x)
+    sensi = reduce(hcat, grad_x_log_target(y) for y in eachcol(map_of_x))
+    grad_rho_of_map_of_x = CoeffGrad(tri_map, x, sensi)
+    grad_log_det = LogDeterminantCoeffGrad(tri_map, x)
+    g .= -sum(grad_rho_of_map_of_x + grad_log_det, dims=2) / num_points
+  end
+end
+
+# ╔═╡ 955232d6-23bb-11ed-04b0-3956d0902407
+begin
+  # Draw reference samples to define objective
+  N = 10000
+  Xtrain = randn(rng, 2, N)
+end
+
+# ╔═╡ 95524424-23bb-11ed-388e-5555245ec846
+md"""
+#### Map parameterization
+
+We use the MParT function `CreateTriangular` to directly create a transport map object of dimension with given total order parameterization.
+"""
+
+# ╔═╡ eaeb3764-5d9f-494b-8cad-9031dcb1495a
+begin
+  # Create transport map
+  opts = MapOptions()
+  total_order = 3
+  tri_map = CreateTriangular(2, 2, total_order, opts)
+end
+
+# ╔═╡ 95524460-23bb-11ed-0ecc-c5a9fb22102c
+md"""
+#### Optimization
+"""
+
+# ╔═╡ 95524474-23bb-11ed-2396-25b70f66a9aa
+begin
+  u0 = CoeffMap(tri_map)
+  p = (tri_map, Xtrain)
+  fcn = OptimizationFunction(obj, grad=grad_obj!)
+  prob = OptimizationProblem(fcn, u0, p)
+  res = solve(prob, BFGS())
+end
+
+# ╔═╡ 95524e88-23bb-11ed-0a1f-91e9b1718e3c
+md"""
+## Accuracy checks
+"""
+
+# ╔═╡ 95524e92-23bb-11ed-305e-eb877442f4d9
+md"""
+### Comparing density contours
+"""
+
+# ╔═╡ 95524e9c-23bb-11ed-17f6-b3eacfd2065d
+md"""
+Comparison between contours of the posterior $\pi(\boldsymbol{\theta}|\mathbf{y})$ and conoturs of pushforward density $T_\sharp \eta$.
+"""
+
+# ╔═╡ 95524eb2-23bb-11ed-05b5-01cf63f91985
+# Pushforward distribution
+function push_forward_pdf(tri_map, ref, x)
+  xinv = MParT.Inverse(tri_map, zeros(0, size(x, 2)), x)
+  log_det_grad_x_inverse = -LogDeterminant(tri_map, xinv)
+  log_pdf = logpdf(ref, xinv) + log_det_grad_x_inverse
+  exp.(log_pdf)
+end
+
+# ╔═╡ 28d841cf-84d2-40d7-b16f-70a97301c864
+begin
+  # Reference distribution
+  ref = MvNormal(I(2))
+
+  xx_eval = vcat(vec(X)', vec(Y)')
+  Z2 = push_forward_pdf(tri_map, ref, xx_eval)
+end
+
+# ╔═╡ 95526dd2-23bb-11ed-0084-2f374a59fcf3
+begin
+  fig2 = Figure(size=(1200,550), fontsize=24)
+  ax21 = Axis(fig2[1, 1], xlabel=L"\theta_1", ylabel=L"\theta_2", title="Unnormalized Posterior")
+  ax22 = Axis(fig2[1, 2], xlabel=L"\theta_1", ylabel=L"\theta_2", title="Transport Map Approximation")
+  ax21.aspect = 1.0
+  ax22.aspect = 1.0
+  contour!(ax21, vec(X), vec(Y), vec(Z))
+  contour!(ax22, vec(X), vec(Y), Z2)
+  fig2
+end
+
+# ╔═╡ 9552c4c6-23bb-11ed-1d37-575900099d7c
+md"""
+### Variance diagnostic
+
+A commonly used accuracy check when facing computation maps from density is the so-called variance diagnostic defined as:
+
+```math
+ \epsilon_\sigma = \frac{1}{2} \mathbb{V}\text{ar}_\rho \left[ \log \frac{\rho}{T^\sharp \bar{\pi}} \right]
+```
+
+This diagnostic is asymptotically equivalent to the minimized KL divergence $D_{KL}(\eta || T^\sharp \pi)$ and should converge to zero when the computed map converge to the theoretically true map.
+"""
+
+# ╔═╡ 9552c50c-23bb-11ed-064d-8361c8366bad
+function variance_diagnostic(tri_map, ref, target_logpdf, x)
+  ref_logpdf = logpdf(ref, x)
+  y = Evaluate(tri_map, x)
+  target_eval = [target_logpdf(y[:, j]) for j in axes(y, 2)]
+  pullback_logpdf = target_eval + LogDeterminant(tri_map, x)
+  diff = ref_logpdf - pullback_logpdf
+  expect = mean(diff, dims=2)
+  0.5 * mean((diff - expect) .^ 2)
+end
+
+# ╔═╡ 9552ed34-23bb-11ed-2861-df67d16017ce
+begin
+  # Reference distribution
+  ref_distribution = MvNormal(I(2))
+
+  test_z = randn(rng, 2, 10000)
+  # Compute variance diagnostic
+  var_diag = variance_diagnostic(tri_map, ref, log_target, test_z)
+
+  # Print final coeffs and objective
+  print("""==================
+  Variance diagnostic: $var_diag
+  ==================""")
+end
+
+# ╔═╡ 9553252c-23bb-11ed-37b4-958268509e7c
+md"""
+### Drawing samples from approximate posterior
+
+Once the transport map from reference to unnormalized posterior is estimated it can be used to sample from the posterior to characterize the Bayesian inference solution.
+"""
+
+# ╔═╡ 3d16aa5c-e2a4-4482-9f18-de74f6fcb2e0
+begin
+  Znew = randn(rng, 2, 5000)
+  colors = atan.(Znew[2, :], Znew[1, :])
+
+  X_generated = Evaluate(tri_map, Znew)
+end
+
+# ╔═╡ 9553254c-23bb-11ed-1423-9364ea2e42ce
+begin
+  # function colorscheme_alpha(cscheme::ColorScheme, alpha::T = 0.5;
+  # 		ncolors=12) where T<:Real
+  # 	return ColorScheme([RGBA(get(cscheme, k), alpha) for k in range(0, 1, length=ncolors)])
+  # end
+  alpha = 0.5
+  colors_alpha = [RGBA(ColorSchemes.viridis[c], alpha) for c in (colors .+ pi) / (2pi)]
+  fig3 = Figure()
+  ax31 = Axis(fig3[1, 1], xlabel=L"\theta_1", ylabel=L"\theta_2", title="Approximate Posterior Samples")
+  ax32 = Axis(fig3[1, 2], xlabel=L"\theta_1", ylabel=L"\theta_2", title="Reference Samples")
+  ax31.aspect = 1.0
+  ax32.aspect = 1.0
+  scatter!(ax31, X_generated[1, :], X_generated[2, :], color=colors_alpha)
+  scatter!(ax32, Znew[1, :], Znew[2, :], color=colors_alpha)
+  fig3
+end
+
+# ╔═╡ 95539ba0-23bb-11ed-3d5c-57908b19833e
+md"""
+Samples can then be used to compute quantity of interest with respect to parameters $\boldsymbol{\theta}$. For example the sample mean is $(Tuple(mean(X_generated,dims=2)[:]))
+"""
+
+# ╔═╡ 9553a5b2-23bb-11ed-3dac-bf9f97829c5b
+begin
+  fig4 = Figure()
+  ax41 = Axis(fig4[1, 1], xlabel=L"\theta_1", ylabel=L"\tilde{\pi}(\theta_1)", title=L"Marginal of $\theta_1$ from generated samples")
+  ax42 = Axis(fig4[1, 2], xlabel=L"\theta_2", ylabel=L"\tilde{\pi}(\theta_2)", title=L"Marginal of $\theta_2$ from generated samples")
+  density!(ax41, X_generated[1, :], normalization=:pdf, color=(:blue, 0.5))
+  density!(ax42, X_generated[2, :], normalization=:pdf, color=(:blue, 0.5))
+  fig4
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
 [deps]
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MParT = "4383ffe1-dc98-4547-9515-b1eacdbc2dac"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
+CairoMakie = "~0.11.9"
+ColorSchemes = "~3.24.0"
+Colors = "~0.12.10"
 Distributions = "~0.25.107"
-GLMakie = "~0.9.9"
 MParT = "~2.2.2"
 Optimization = "~3.24.2"
 OptimizationOptimJL = "~0.2.3"
+SpecialFunctions = "~2.3.1"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -183,7 +502,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.2"
 manifest_format = "2.0"
-project_hash = "49c8624da40ec3121537023b6f912e48fad3b004"
+project_hash = "c83be87fddc84970037009702ab9021cd3d5691e"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "016833eb52ba2d6bea9fcb50ca295980e728ee24"
@@ -306,6 +625,18 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "e329286945d0cfc04456972ea732551869af1cfc"
 uuid = "4e9b3aee-d8a1-5a3d-ad8b-7d824db253f0"
 version = "1.0.1+0"
+
+[[deps.Cairo]]
+deps = ["Cairo_jll", "Colors", "Glib_jll", "Graphics", "Libdl", "Pango_jll"]
+git-tree-sha1 = "d0b3f8b4ad16cb0a2988c6788646a5e6a17b6b1b"
+uuid = "159f3aea-2a34-519c-b102-8c37f9878175"
+version = "1.0.5"
+
+[[deps.CairoMakie]]
+deps = ["CRC32c", "Cairo", "Colors", "FFTW", "FileIO", "FreeType", "GeometryBasics", "LinearAlgebra", "Makie", "PrecompileTools"]
+git-tree-sha1 = "6dc1bbdd6a133adf4aa751d12dbc2c6ae59f873d"
+uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+version = "0.11.9"
 
 [[deps.Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "CompilerSupportLibraries_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
@@ -675,24 +1006,6 @@ version = "0.1.3"
 deps = ["Random"]
 uuid = "9fa8497b-333b-5362-9e8d-4d0656e87820"
 
-[[deps.GLFW]]
-deps = ["GLFW_jll"]
-git-tree-sha1 = "35dbc482f0967d8dceaa7ce007d16f9064072166"
-uuid = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
-version = "3.4.1"
-
-[[deps.GLFW_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Libglvnd_jll", "Xorg_libXcursor_jll", "Xorg_libXi_jll", "Xorg_libXinerama_jll", "Xorg_libXrandr_jll"]
-git-tree-sha1 = "ff38ba61beff76b8f4acad8ab0c97ef73bb670cb"
-uuid = "0656b61e-2033-5cc2-a64a-77c0f6c09b89"
-version = "3.3.9+0"
-
-[[deps.GLMakie]]
-deps = ["ColorTypes", "Colors", "FileIO", "FixedPointNumbers", "FreeTypeAbstraction", "GLFW", "GeometryBasics", "LinearAlgebra", "Makie", "Markdown", "MeshIO", "ModernGL", "Observables", "PrecompileTools", "Printf", "ShaderAbstractions", "StaticArrays"]
-git-tree-sha1 = "7a411adf08375e01d864386fb1eaf384de5ac9e9"
-uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-version = "0.9.9"
-
 [[deps.GPUArraysCore]]
 deps = ["Adapt"]
 git-tree-sha1 = "ec632f177c0d990e64d955ccc1b8c04c485a0950"
@@ -722,6 +1035,12 @@ deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libic
 git-tree-sha1 = "359a1ba2e320790ddbe4ee8b4d54a305c0ea2aff"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
 version = "2.80.0+0"
+
+[[deps.Graphics]]
+deps = ["Colors", "LinearAlgebra", "NaNMath"]
+git-tree-sha1 = "d61890399bc535850c4bf08e4e0d3a7ad0f21cbd"
+uuid = "a2bd30eb-e257-5431-a919-1863eab51364"
+version = "1.1.2"
 
 [[deps.Graphite2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -982,12 +1301,6 @@ git-tree-sha1 = "64613c82a59c120435c067c2b809fc61cf5166ae"
 uuid = "d4300ac3-e22c-5743-9152-c294e39db1e4"
 version = "1.8.7+0"
 
-[[deps.Libglvnd_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll", "Xorg_libXext_jll"]
-git-tree-sha1 = "6f73d1dd803986947b2c750138528a999a6c7733"
-uuid = "7e76a0d4-f3c7-5321-8279-8d96eeed0f29"
-version = "1.6.0+0"
-
 [[deps.Libgpg_error_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "c333716e46366857753e273ce6a69ee0945a6db9"
@@ -1121,12 +1434,6 @@ deps = ["Artifacts", "Libdl"]
 uuid = "c8ffd9c3-330d-5841-b78e-0817d7145fa1"
 version = "2.28.2+1"
 
-[[deps.MeshIO]]
-deps = ["ColorTypes", "FileIO", "GeometryBasics", "Printf"]
-git-tree-sha1 = "8c26ab950860dfca6767f2bbd90fdf1e8ddc678b"
-uuid = "7269a6da-0436-5bbc-96c2-40638cbb6118"
-version = "0.4.11"
-
 [[deps.Missings]]
 deps = ["DataAPI"]
 git-tree-sha1 = "f66bdc5de519e8f8ae43bdc598782d35a25b1272"
@@ -1135,12 +1442,6 @@ version = "1.1.0"
 
 [[deps.Mmap]]
 uuid = "a63ad114-7e13-5084-954f-fe012c677804"
-
-[[deps.ModernGL]]
-deps = ["Libdl"]
-git-tree-sha1 = "b76ea40b5c0f45790ae09492712dd326208c28b2"
-uuid = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
-version = "1.1.7"
 
 [[deps.Mods]]
 git-tree-sha1 = "924f962b524a71eef7a21dae1e6853817f9b658f"
@@ -1328,6 +1629,12 @@ deps = ["OffsetArrays"]
 git-tree-sha1 = "0fac6313486baae819364c52b4f483450a9d793f"
 uuid = "5432bcbf-9aad-5242-b902-cca2824c8663"
 version = "0.5.12"
+
+[[deps.Pango_jll]]
+deps = ["Artifacts", "Cairo_jll", "Fontconfig_jll", "FreeType2_jll", "FriBidi_jll", "Glib_jll", "HarfBuzz_jll", "JLLWrappers", "Libdl"]
+git-tree-sha1 = "526f5a03792669e4187e584e8ec9d534248ca765"
+uuid = "36c8627f-9965-5494-a995-c6b170f724f3"
+version = "1.52.1+0"
 
 [[deps.Parameters]]
 deps = ["OrderedCollections", "UnPack"]
@@ -1884,12 +2191,6 @@ git-tree-sha1 = "6035850dcc70518ca32f012e46015b9beeda49d8"
 uuid = "0c0b7dd1-d40b-584c-a123-a41640f87eec"
 version = "1.0.11+0"
 
-[[deps.Xorg_libXcursor_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXfixes_jll", "Xorg_libXrender_jll"]
-git-tree-sha1 = "12e0eb3bc634fa2080c1c37fccf56f7c22989afd"
-uuid = "935fb764-8cf2-53bf-bb30-45bb1f8bf724"
-version = "1.2.0+4"
-
 [[deps.Xorg_libXdmcp_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl"]
 git-tree-sha1 = "34d526d318358a859d7de23da945578e8e8727b7"
@@ -1901,30 +2202,6 @@ deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
 git-tree-sha1 = "b7c0aa8c376b31e4852b360222848637f481f8c3"
 uuid = "1082639a-0dae-5f34-9b06-72781eeb8cb3"
 version = "1.3.4+4"
-
-[[deps.Xorg_libXfixes_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
-git-tree-sha1 = "0e0dc7431e7a0587559f9294aeec269471c991a4"
-uuid = "d091e8ba-531a-589c-9de9-94069b037ed8"
-version = "5.0.3+4"
-
-[[deps.Xorg_libXi_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll", "Xorg_libXfixes_jll"]
-git-tree-sha1 = "89b52bc2160aadc84d707093930ef0bffa641246"
-uuid = "a51aa0fd-4e3c-5386-b890-e753decda492"
-version = "1.7.10+4"
-
-[[deps.Xorg_libXinerama_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll"]
-git-tree-sha1 = "26be8b1c342929259317d8b9f7b53bf2bb73b123"
-uuid = "d1454406-59df-5ea1-beac-c340f2130bc3"
-version = "1.1.4+4"
-
-[[deps.Xorg_libXrandr_jll]]
-deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll"]
-git-tree-sha1 = "34cea83cb726fb58f325887bf0612c6b3fb17631"
-uuid = "ec84b674-ba8e-5d96-8ba1-2a689ba10484"
-version = "1.5.2+4"
 
 [[deps.Xorg_libXrender_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg", "Xorg_libX11_jll"]
@@ -2032,30 +2309,51 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╟─926056c4-23bc-11ed-051f-5d11cd3b164d
-# ╟─92605714-23bc-11ed-301d-1d8c6476ed1f
-# ╠═683d5dc1-f954-4ca2-87c1-e400e6889921
-# ╠═8349bbf3-550d-4df0-9cc1-f490f72a3547
-# ╟─9262e772-23bc-11ed-062e-b35629702528
-# ╠═9262e7ae-23bc-11ed-09c3-c7e561e39567
-# ╟─9262fc26-23bc-11ed-22a5-a16caa625403
-# ╠═9262fc38-23bc-11ed-22ec-7b2712b1066a
-# ╠═92630aae-23bc-11ed-2419-5742d1372248
-# ╟─92632f84-23bc-11ed-29e2-8527d45df4f5
-# ╠═92632fa2-23bc-11ed-1471-e57a86ed9827
-# ╟─92634078-23bc-11ed-2f69-9b0e8f468495
-# ╠═926340a0-23bc-11ed-3884-c5e84ce2fd05
-# ╟─92634b22-23bc-11ed-12d4-9f74f3d7dee5
-# ╠═92634b2c-23bc-11ed-0e80-03dfa76148a0
-# ╠═f044086b-a5e2-485d-983a-4077ac1ccccf
-# ╠═926399f6-23bc-11ed-209f-63816e8c6693
-# ╠═8c9f78ec-5f59-479a-b457-bbccff1a5445
-# ╠═60aa8b4c-964c-453e-b205-5367b9eebc5e
-# ╠═ce8b4ab7-e25c-4de1-af4c-a7a84302b049
-# ╠═7ba62ea3-cba2-4832-b1a3-4b291b66c1c7
-# ╠═8da1f8fa-42bf-4340-ab71-f06e8b480bce
-# ╠═44c87ff4-9eaf-4dfa-b465-66ff8dbe992f
-# ╟─9263bcec-23bc-11ed-2199-4df8853fdced
-# ╠═9263bd0c-23bc-11ed-3538-2f1e570cb9b3
+# ╠═954d857e-23bb-11ed-379f-bf59db6edf0e
+# ╟─954d8600-23bb-11ed-3afb-79985341ba63
+# ╟─954d8650-23bb-11ed-08e0-35522a6e6112
+# ╟─954d8658-23bb-11ed-0104-fd19bf60c5af
+# ╠═a1580c3a-1d78-4713-a984-efac1b21e2af
+# ╟─955024f0-23bb-11ed-185c-b3f673bbe699
+# ╟─9550257c-23bb-11ed-0959-2becda31f4a3
+# ╟─95502586-23bb-11ed-2dcd-7329ebb64ff0
+# ╟─955025ea-23bb-11ed-2bf3-038f89b70ae3
+# ╠═955025f4-23bb-11ed-2332-7b5583ceb8b4
+# ╟─9550755e-23bb-11ed-0a8a-e9249a94e917
+# ╟─9550757c-23bb-11ed-163d-0bc0ea8f5239
+# ╟─955090cc-23bb-11ed-3513-57f02bb737ea
+# ╟─9550911a-23bb-11ed-1e50-c7956d97df01
+# ╠═95509124-23bb-11ed-0191-cbc0b0146cc7
+# ╟─9550cb82-23bb-11ed-22db-f925cb8b7d63
+# ╠═9550cb94-23bb-11ed-3489-3f3450a778a0
+# ╟─955137de-23bb-11ed-08be-77012cac7bd9
+# ╠═95513804-23bb-11ed-153a-4f9809a0bc9d
+# ╟─95515618-23bb-11ed-0b45-cfaf024382b0
+# ╠═52bdd1c1-6e8a-4adc-acbb-ccc3a71b5605
+# ╟─9551562c-23bb-11ed-2be1-93c303957fd2
+# ╟─9551a47e-23bb-11ed-0695-979c1f145d52
+# ╟─9551a492-23bb-11ed-20d2-3f8674c9579c
+# ╟─9551a4a6-23bb-11ed-0117-6bf451a9bc15
+# ╟─9551a4b0-23bb-11ed-31a5-051dcf2c9d0a
+# ╠═9551a528-23bb-11ed-0b28-fdca4891dd0e
+# ╠═955232d6-23bb-11ed-04b0-3956d0902407
+# ╟─95524424-23bb-11ed-388e-5555245ec846
+# ╠═eaeb3764-5d9f-494b-8cad-9031dcb1495a
+# ╟─95524460-23bb-11ed-0ecc-c5a9fb22102c
+# ╠═95524474-23bb-11ed-2396-25b70f66a9aa
+# ╟─95524e88-23bb-11ed-0a1f-91e9b1718e3c
+# ╟─95524e92-23bb-11ed-305e-eb877442f4d9
+# ╟─95524e9c-23bb-11ed-17f6-b3eacfd2065d
+# ╠═95524eb2-23bb-11ed-05b5-01cf63f91985
+# ╠═28d841cf-84d2-40d7-b16f-70a97301c864
+# ╟─95526dd2-23bb-11ed-0084-2f374a59fcf3
+# ╟─9552c4c6-23bb-11ed-1d37-575900099d7c
+# ╠═9552c50c-23bb-11ed-064d-8361c8366bad
+# ╠═9552ed34-23bb-11ed-2861-df67d16017ce
+# ╟─9553252c-23bb-11ed-37b4-958268509e7c
+# ╠═3d16aa5c-e2a4-4482-9f18-de74f6fcb2e0
+# ╟─9553254c-23bb-11ed-1423-9364ea2e42ce
+# ╟─95539ba0-23bb-11ed-3d5c-57908b19833e
+# ╟─9553a5b2-23bb-11ed-3dac-bf9f97829c5b
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002

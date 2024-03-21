@@ -4,157 +4,355 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 8349bbf3-550d-4df0-9cc1-f490f72a3547
-using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, GLMakie, Printf
+# ╔═╡ cf2ac5f8-23bc-11ed-26bc-e1b378ddeec9
+using MParT, Distributions, LinearAlgebra, Statistics, Optimization, OptimizationOptimJL, GLMakie
 
-# ╔═╡ 926056c4-23bc-11ed-051f-5d11cd3b164d
+# ╔═╡ cf2ac67a-23bc-11ed-0acb-d56c6fe1e2d4
 md"""
-# Construct map from density
+# Transport Map from density
 
-One way to construct a transport map is from an unnormalized density.
+The objective of this example is to show how a transport map can be build in MParT when the the unnormalized probability density function of the target density is known.
 """
 
-# ╔═╡ 92605714-23bc-11ed-301d-1d8c6476ed1f
+# ╔═╡ cf2ac6ca-23bc-11ed-323a-03b60ad5cab7
 md"""
-First, import MParT and other packages used in this notebook. Note that it is possible to specify the number of threads used by MParT by setting the `KOKKOS_NUM_THREADS` environment variable before importing MParT.
+## Problem description
+
+We consider $T(\mathbf{z};\mathbf{w})$ a monotone triangular transport map parameterized by $\mathbf{w}$ (e.g., polynomial coefficients). This map which is invertible and has an invertible Jacobian for any parameter $\mathbf{w}$, transports samples $\mathbf{z}^i$ from the reference density $\eta$ to samples $T(\mathbf{z}^i;\mathbf{w})$ from the map induced density $\tilde{\pi}_\mathbf{w}(\mathbf{z})$ defined as:
+```math
+ \tilde{\pi}_\mathbf{w}(\mathbf{z}) = \eta(T^{-1}(\mathbf{z};\mathbf{w}))|\text{det } T^{-1}(\mathbf{z};\mathbf{w})|,
+```
+where $\text{det } T^{-1}$ is the determinant of the inverse map Jacobian at the point $\mathbf{z}$. We refer to $\tilde{\pi}_{\mathbf{w}}(\mathbf{x})$ as the *map-induced* density or *pushforward distribution* and will commonly interchange notation for densities and measures to use the notation $\tilde{\pi} = T_{\sharp} \eta$.
+
+The objective of this example is, knowing some unnormalized target density $\bar{\pi}$, find the map $T$ that transport samples drawn from $\eta$ to samples drawn from the target $\pi$.
 """
 
-# ╔═╡ 683d5dc1-f954-4ca2-87c1-e400e6889921
-ENV["KOKKOS_NUM_THREADS"] = 2
-
-# ╔═╡ 9262e772-23bc-11ed-062e-b35629702528
+# ╔═╡ cf2b9f50-23bc-11ed-28e4-c7b1e305078d
 md"""
-The target distribution is given by $x\sim\mathcal{N}(2, 0.5)$.
+## Imports
+First, import MParT and other packages used in this notebook.
 """
 
-# ╔═╡ 9262e7ae-23bc-11ed-09c3-c7e561e39567
+# ╔═╡ cf2d7028-23bc-11ed-13e7-2911649c99b4
+md"""
+## Target density and exact map
+
+In this example we use a 2D target density known as the *banana* density where the unnormalized probability density, samples and the exact transport map are known.
+
+The banana density is defined as:
+```math
+\pi(x_1,x_2) \propto N_1(x_1)\times N_1(x_2-x_1^2)
+```
+where $N_1$ is the 1D standard normal density.
+
+The exact transport map that transport the 2D standard normal density to $\pi$ is known as:
+```math
+{T}^\text{true}(z_1,z_2)=
+\begin{bmatrix}
+z_1\\
+z_2 + z_1^2
+\end{bmatrix}
+```
+"""
+
+# ╔═╡ cf2d70d0-23bc-11ed-32dc-9bfca2278411
+md"""
+Contours of the target density can be visualized as:
+"""
+
+# ╔═╡ cf2d70dc-23bc-11ed-3152-750597e92697
 begin
-	num_points = 5000
-	mu = 2
-	sigma = .5
-	x = randn(1,num_points)
-end;
 
-# ╔═╡ 9262fc26-23bc-11ed-22a5-a16caa625403
-md"""
-As the reference density we choose the standard normal.
-"""
-
-# ╔═╡ 9262fc38-23bc-11ed-22ec-7b2712b1066a
-begin
-	reference_density = Normal(mu,sigma)
-	t = range(-3,6,100)
-	rho_t = pdf.(reference_density, t)
+# Unnomalized target density required for objective
+function target_logpdf(x) 
+  rv1 = Normal()
+  rv2 = Normal()
+  logpdf1 = logpdf.(rv1, x[1,:])
+  logpdf2 = logpdf.(rv2, x[2,:]-x[1,:] .^2)
+  logpdf_ret = logpdf1 + logpdf2
+  logpdf_ret
 end
 
-# ╔═╡ 92630aae-23bc-11ed-2419-5742d1372248
-begin
-	fig1 = Figure()
-	ax1 = Axis(fig1[1,1], title="Before Optimization")
-	hist!(ax1, vec(x), color=(:red,0.5), density=true, label="Reference samples", normalization=:pdf)
-	lines!(ax1, t, rho_t,label="Target density")
-	scatter!(ax1, t, rho_t,label="Target density")
-	axislegend()
-	fig1
+# Gride for plotting
+ngrid=100
+x1_t = range(-3,3,ngrid)
+x2_t = range(-3,7.5,ngrid)
+xx1 = vec(repeat(x1_t', ngrid, 1))
+xx2 = vec(repeat(x2_t , 1, ngrid))
+
+xx = collect(hcat(xx1, xx2)')
+
+# For plotting and computing densities
+
+target_pdf_at_grid = exp.(target_logpdf(xx))
+
+fig0 = Figure()
+ax0 = Axis(fig0[1,1], xlabel=L"x_1", ylabel=L"x_2")
+contour!(ax0, xx1, xx2, target_pdf_at_grid, label="target density")
+axislegend()
+fig0
+
+
 end
 
-# ╔═╡ 92632f84-23bc-11ed-29e2-8527d45df4f5
+# ╔═╡ cf2e0f56-23bc-11ed-2461-f33568194c75
 md"""
-Next we create a multi-index set and create a map. Affine transform should be enough to capture the Gaussian target.
+## Map training
+### Defining objective function and its gradient
+Knowing the closed form of the unnormalized target density $\bar{\pi}$, the objective is to find a map-induced density $\tilde{\pi}_{\mathbf{w}}(\mathbf{z})$ that is a good approximation of the target $\pi$.
+
+In order to characterize this posterior density, one method is to build a monotone triangular transport map $T$ such that the KL divergence $D_{KL}(\eta || T^\sharp \pi)$ is minmized. If $T$ is map parameterized by $\mathbf{w}$, the objective function derived from the discrete KL divergence reads:
+
+```math
+J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) + \log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d),
+```
+
+where $T$ is the transport map pushing forward the standard normal $\mathcal{N}(\mathbf{0},\mathbf{I}_d)$ to the target density $\pi(\mathbf{z})$. The gradient of this objective function reads
+
+```math
+\nabla_\mathbf{w} J(\mathbf{w}) = - \frac{1}{N}\sum_{i=1}^N \left( \nabla_\mathbf{w} T(\mathbf{z}^i;\mathbf{w}).\nabla_\mathbf{x}\log\pi\left(T(\mathbf{z}^i;\mathbf{w})\right) + \nabla_{\mathbf{w}}\log  \text{det }\nabla_\mathbf{z} T(\mathbf{z}^i;\mathbf{w})\right), \,\,\, \mathbf{z}^i \sim \mathcal{N}(\mathbf{0},\mathbf{I}_d).
+```
 """
 
-# ╔═╡ 92632fa2-23bc-11ed-1471-e57a86ed9827
-begin
-	multis = [0;1]
-	mset = MultiIndexSet(multis)
-	fixed_mset = Fix(mset, true)
-end;
-
-# ╔═╡ 92634078-23bc-11ed-2f69-9b0e8f468495
+# ╔═╡ cf2e0fd6-23bc-11ed-368b-03cb6689afda
 md"""
-Now we set the map options (default in this case) and initialize the map
+The objective function and gradient can be defined using MParT as:
 """
 
-# ╔═╡ 926340a0-23bc-11ed-3884-c5e84ce2fd05
-begin
-	opts = MapOptions()
-	monotoneMap = CreateComponent(fixed_mset, opts)
-end
-
-# ╔═╡ 92634b22-23bc-11ed-12d4-9f74f3d7dee5
+# ╔═╡ cf2e888c-23bc-11ed-1b80-85b45122f274
 md"""
-Next we optimize the coefficients of the map by minimizing the Kullback–Leibler divergence between the target and reference density.
+### Map parameterization
 """
 
-# ╔═╡ 92634b2c-23bc-11ed-0e80-03dfa76148a0
-function objective(coeffs,p)
-	monotoneMap, x, rv = p
-    num_points = size(x,1)
-    SetCoeffs(monotoneMap, coeffs)
-    map_of_x = Evaluate(monotoneMap, x)
-    pi_of_map_of_x = logpdf.(rv, map_of_x)
-    log_det = LogDeterminant(monotoneMap, x)
-    -sum(vec(pi_of_map_of_x) + log_det)/num_points
-end
-
-# ╔═╡ f044086b-a5e2-485d-983a-4077ac1ccccf
-begin
-	p = monotoneMap, x, reference_density
-	u0 = CoeffMap(monotoneMap)
-	prob = OptimizationProblem(objective, u0, p)
-end
-
-# ╔═╡ 926399f6-23bc-11ed-209f-63816e8c6693
-println("Starting coeffs")
-
-# ╔═╡ 8c9f78ec-5f59-479a-b457-bbccff1a5445
-println(CoeffMap(monotoneMap))
-
-# ╔═╡ 60aa8b4c-964c-453e-b205-5367b9eebc5e
-u02 = CoeffMap(monotoneMap)
-
-# ╔═╡ ce8b4ab7-e25c-4de1-af4c-a7a84302b049
-err0 = objective(u02, p)
-
-# ╔═╡ 7ba62ea3-cba2-4832-b1a3-4b291b66c1c7
-@printf "and error: %.2e\n" err0
-
-# ╔═╡ 8da1f8fa-42bf-4340-ab71-f06e8b480bce
-sol = solve(prob, NelderMead())
-
-# ╔═╡ 44c87ff4-9eaf-4dfa-b465-66ff8dbe992f
-begin
-	
-	u_final = sol.u
-	println("----------------------")
-	println("Final coeffs")
-	println(u_final)
-	err_final = objective(u_final, p)
-	@printf "and error: %.2e" err_final
-end
-
-# ╔═╡ 9263bcec-23bc-11ed-2199-4df8853fdced
+# ╔═╡ cf2e88aa-23bc-11ed-0c95-9f2969dbda47
 md"""
-...and plot the results.
+For the parameterization of $T$ we use a total order multivariate expansion of hermite functions. Knowing $T^\text{true}$, any parameterization with total order greater than one will include the true solution of the map finding problem.
 """
 
-# ╔═╡ 9263bd0c-23bc-11ed-3538-2f1e570cb9b3
+# ╔═╡ cf2e88b4-23bc-11ed-20cd-7de15cf84efa
 begin
-	map_of_x = Evaluate(monotoneMap, x)
-	fig2 = Figure()
-	ax21 = Axis(fig2[1,1], title="After Optimization")
-	ax22 = Axis(fig2[2,1])
-	hist!(ax21, vec(x), color=(:red,0.5), normalization=:pdf, label="Reference samples")
-	hist!(ax21, vec(map_of_x), color=(:blue, 0.5), normalization=:pdf, label="Mapped samples")
-	scatterlines!(ax21, t, rho_t, label="Target density")
-	axislegend(ax21)
+# Set-up first component and initialize map coefficients
+map_options = MapOptions()
 
-	hist!(ax22, vec(x), color=(:red,0.5), normalization=:pdf, label="Reference samples")
-	hist!(ax22, vec(map_of_x), color=(:blue, 0.5), normalization=:pdf, label="Mapped samples")
-	scatterlines!(ax22, t, cdf.(reference_density, t), label="Target CDF")
-	axislegend(ax22)
-	
-	fig2
+total_order = 2
+
+# Create dimension 2 triangular map 
+transport_map = CreateTriangular(2,2,total_order,map_options)
+end
+
+# ╔═╡ cf2eaa56-23bc-11ed-36f0-c9a091908b6b
+md"""
+### Approximation before optimization
+
+Coefficients of triangular map are set to 0 upon creation.
+"""
+
+# ╔═╡ cf2eaa6a-23bc-11ed-3e30-dbabffd7d7c2
+begin
+# Make reference samples for training
+num_points = 10000
+z = randn(2,num_points)
+
+# Make reference samples for testing
+test_z = randn(2,5000)
+
+# Pushed samples
+pushed_samples = Evaluate(transport_map, test_z)
+
+# Before optimization plot
+fig1 = Figure()
+ax1 = Axis(fig1[1,1])
+contour!(ax1, xx1, xx2, target_pdf_at_grid, label="Target density")
+scatter!(ax1, pushed_samples[1,:], pushed_samples[2,:], color=(:blue,0.1), label="Pushed samples")
+axislegend()
+fig1
+end
+
+# ╔═╡ cf2e0fe2-23bc-11ed-0523-4d37924a653e
+begin
+# KL divergence objective
+function obj(coeffs,p)
+	transport_map, x = p
+    SetCoeffs(transport_map, coeffs)
+    map_of_x = Evaluate(transport_map, x)
+    logpdf= target_logpdf(map_of_x)
+    log_det = LogDeterminant(transport_map, x)
+    -sum(logpdf + log_det)/num_points
+end
+
+# Gradient of unnomalized target density required for gradient objective
+function target_grad_logpdf(x)
+  grad1 = -x[1,:] + (2*x[1,:].*(x[2,:]-x[1,:] .^2))
+  grad2 = (x[1,:] .^2-x[2,:])
+  collect(hcat(grad1,grad2)')
+end
+
+# Gradient of KL divergence objective
+function grad_obj!(g, coeffs,p)
+	transport_map, x = p
+    SetCoeffs(transport_map, coeffs)
+    map_of_x = Evaluate(transport_map, x)
+    sens_vecs = target_grad_logpdf(map_of_x)
+    grad_logpdf = CoeffGrad(transport_map, x, sens_vecs)
+    grad_log_det = LogDeterminantCoeffGrad(transport_map, x)
+    g .= -sum(grad_logpdf + grad_log_det, dims=2)/num_points
+end
+
+
+end
+
+# ╔═╡ cf2f0410-23bc-11ed-1841-7bb2fa568c4a
+md"""
+At initialization, samples are "far" from being distributed according to the banana distribution.
+"""
+
+# ╔═╡ cf2f0424-23bc-11ed-0a3e-45f85711e4c1
+md"""
+Initial objective and coefficients:
+"""
+
+# ╔═╡ cf2f042e-23bc-11ed-32ae-dd969d3a46cb
+begin
+	# Print initial coeffs and objective
+	println("==================")
+	println("Starting coeffs")
+	println(CoeffMap(transport_map))
+	p_init = (transport_map, test_z)
+	println("Initial objective value: $(obj(CoeffMap(transport_map), p_init)))")
+	println("==================")
+end
+
+# ╔═╡ cf2f044c-23bc-11ed-3931-d946219ee61c
+md"""
+### Minimization
+"""
+
+# ╔═╡ cf2f0456-23bc-11ed-0353-4da660ca53ff
+begin
+println("==================")
+u0 = CoeffMap(transport_map)
+p = (transport_map, z)
+fcn = OptimizationFunction(obj, grad=grad_obj!)
+prob = OptimizationProblem(fcn, u0, p, g_tol=1e-4)
+res = solve(prob, BFGS())
+
+# Print final coeffs and objective
+println("Final coeffs:")
+println(CoeffMap(transport_map))
+println("Final objective value: $(obj(CoeffMap(transport_map), (transport_map, test_z)))")
+println("==================")
+end
+
+# ╔═╡ cf2f312e-23bc-11ed-0e8c-35b055880c14
+md"""
+### Approximation after optimization
+"""
+
+# ╔═╡ cf2f3142-23bc-11ed-2b9c-93263102060d
+md"""
+#### Pushed samples
+"""
+
+# ╔═╡ cf2f314c-23bc-11ed-344e-e916c1adb459
+begin
+# Pushed samples
+x = Evaluate(transport_map, test_z)
+
+# After optimization plot
+fig2 = Figure()
+ax2 = Axis(fig2[1,1])
+contour!(ax2, xx1, xx2, target_pdf_at_grid, label="Target Density")
+scatter!(ax2, x[1,:],x[2,:], color=(:blue,0.1), label="Pushed samples")
+axislegend()
+fig2
+end
+
+# ╔═╡ cf2f6bee-23bc-11ed-37ed-97979e9d0872
+md"""
+After optimization, pushed samples $T(z^i)$, $z^i \sim \mathcal{N}(0,I)$ are approximately distributed according to the target $\pi$
+"""
+
+# ╔═╡ cf2f6c02-23bc-11ed-02dc-89d5a450876c
+md"""
+#### Variance diagnostic
+"""
+
+# ╔═╡ cf2f6c16-23bc-11ed-30eb-69ed4f279765
+md"""
+A commonly used accuracy check when facing computation maps from density is the so-called variance diagnostic defined as:
+
+```math
+ \epsilon_\sigma = \frac{1}{2} \mathbb{V}\text{ar}_\rho \left[ \log \frac{\rho}{T^\sharp \bar{\pi}} \right] 
+```
+"""
+
+# ╔═╡ cf2f6c48-23bc-11ed-09dd-f90cacc8452d
+md"""
+This diagnostic is asymptotically equivalent to the minimized KL divergence $D_{KL}(\eta || T^\sharp \pi)$ and should converge to zero when the computed map converge to the true map.
+"""
+
+# ╔═╡ cf2f6c5c-23bc-11ed-3e65-5fc5b80e0169
+md"""
+The variance diagnostic can be computed as follow:
+"""
+
+# ╔═╡ cf2f6c66-23bc-11ed-34d0-297a00f938c1
+function variance_diagnostic(tri_map,ref,target_logpdf,x)
+  ref_logpdf = logpdf(ref, x)
+  y = Evaluate(tri_map, x)
+  pullback_logpdf = target_logpdf(y) + LogDeterminant(tri_map,x)
+  diff = ref_logpdf - pullback_logpdf
+  expect = mean(diff)
+  var = 0.5*mean((diff.-expect) .^2)
+  var
+end
+
+# ╔═╡ cf2f9664-23bc-11ed-1360-c1f2c4971860
+begin
+# Reference distribution
+ref_distribution = MvNormal(I(2));
+
+# Compute variance diagnostic
+var_diag = variance_diagnostic(transport_map,ref_distribution,target_logpdf,test_z)
+
+# Print final coeffs and objective
+println("==================")
+println("Variance diagnostic: $var_diag)")
+println("==================")
+
+
+end
+
+# ╔═╡ cf2fd3ae-23bc-11ed-368a-9519360368f2
+md"""
+#### Pushforward density
+"""
+
+# ╔═╡ cf2fd3ce-23bc-11ed-2157-e98c1a3486ff
+md"""
+We can also plot the contour of the unnormalized density $\bar{\pi}$ and the pushforward approximation $T_\sharp \eta$:
+"""
+
+# ╔═╡ cf2fd3d6-23bc-11ed-0450-bf5e4a78364f
+begin
+
+# Pushforward definition
+function push_forward_pdf(tri_map,ref,x)
+  xinv = MParT.Inverse(tri_map, x,x)
+  log_det_grad_x_inverse = - LogDeterminant(tri_map, xinv)
+  log_pdf = logpdf(ref, xinv)+log_det_grad_x_inverse
+  exp.(log_pdf)
+end
+
+map_approx_grid = push_forward_pdf(transport_map,ref_distribution,xx)
+
+fig3 = Figure()
+ax3 = Axis(fig3[1,1], xlabel=L"x_1", ylabel=L"x_2")
+CS1 = contour!(ax3, xx1, xx2, target_pdf_at_grid, label="Unnormalized target", linewidth=3)
+CS2 = contour!(ax3, xx1, xx2, map_approx_grid, linestyle=:dash, label="TM approximation", linewidth=3)
+axislegend()
+fig3
+
 end
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
@@ -166,7 +364,6 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MParT = "4383ffe1-dc98-4547-9515-b1eacdbc2dac"
 Optimization = "7f7a1694-90dd-40f0-9382-eb1efda571ba"
 OptimizationOptimJL = "36348300-93cb-4f02-beb5-3c3902f8871e"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [compat]
@@ -183,7 +380,7 @@ PLUTO_MANIFEST_TOML_CONTENTS = """
 
 julia_version = "1.10.2"
 manifest_format = "2.0"
-project_hash = "49c8624da40ec3121537023b6f912e48fad3b004"
+project_hash = "08503f7968f7e748ffce9db49ddea9c3a686a227"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "016833eb52ba2d6bea9fcb50ca295980e728ee24"
@@ -2032,30 +2229,38 @@ version = "3.5.0+0"
 """
 
 # ╔═╡ Cell order:
-# ╟─926056c4-23bc-11ed-051f-5d11cd3b164d
-# ╟─92605714-23bc-11ed-301d-1d8c6476ed1f
-# ╠═683d5dc1-f954-4ca2-87c1-e400e6889921
-# ╠═8349bbf3-550d-4df0-9cc1-f490f72a3547
-# ╟─9262e772-23bc-11ed-062e-b35629702528
-# ╠═9262e7ae-23bc-11ed-09c3-c7e561e39567
-# ╟─9262fc26-23bc-11ed-22a5-a16caa625403
-# ╠═9262fc38-23bc-11ed-22ec-7b2712b1066a
-# ╠═92630aae-23bc-11ed-2419-5742d1372248
-# ╟─92632f84-23bc-11ed-29e2-8527d45df4f5
-# ╠═92632fa2-23bc-11ed-1471-e57a86ed9827
-# ╟─92634078-23bc-11ed-2f69-9b0e8f468495
-# ╠═926340a0-23bc-11ed-3884-c5e84ce2fd05
-# ╟─92634b22-23bc-11ed-12d4-9f74f3d7dee5
-# ╠═92634b2c-23bc-11ed-0e80-03dfa76148a0
-# ╠═f044086b-a5e2-485d-983a-4077ac1ccccf
-# ╠═926399f6-23bc-11ed-209f-63816e8c6693
-# ╠═8c9f78ec-5f59-479a-b457-bbccff1a5445
-# ╠═60aa8b4c-964c-453e-b205-5367b9eebc5e
-# ╠═ce8b4ab7-e25c-4de1-af4c-a7a84302b049
-# ╠═7ba62ea3-cba2-4832-b1a3-4b291b66c1c7
-# ╠═8da1f8fa-42bf-4340-ab71-f06e8b480bce
-# ╠═44c87ff4-9eaf-4dfa-b465-66ff8dbe992f
-# ╟─9263bcec-23bc-11ed-2199-4df8853fdced
-# ╠═9263bd0c-23bc-11ed-3538-2f1e570cb9b3
+# ╠═cf2ac5f8-23bc-11ed-26bc-e1b378ddeec9
+# ╟─cf2ac67a-23bc-11ed-0acb-d56c6fe1e2d4
+# ╟─cf2ac6ca-23bc-11ed-323a-03b60ad5cab7
+# ╟─cf2b9f50-23bc-11ed-28e4-c7b1e305078d
+# ╟─cf2d7028-23bc-11ed-13e7-2911649c99b4
+# ╟─cf2d70d0-23bc-11ed-32dc-9bfca2278411
+# ╠═cf2d70dc-23bc-11ed-3152-750597e92697
+# ╟─cf2e0f56-23bc-11ed-2461-f33568194c75
+# ╟─cf2e0fd6-23bc-11ed-368b-03cb6689afda
+# ╠═cf2e0fe2-23bc-11ed-0523-4d37924a653e
+# ╟─cf2e888c-23bc-11ed-1b80-85b45122f274
+# ╟─cf2e88aa-23bc-11ed-0c95-9f2969dbda47
+# ╠═cf2e88b4-23bc-11ed-20cd-7de15cf84efa
+# ╟─cf2eaa56-23bc-11ed-36f0-c9a091908b6b
+# ╠═cf2eaa6a-23bc-11ed-3e30-dbabffd7d7c2
+# ╟─cf2f0410-23bc-11ed-1841-7bb2fa568c4a
+# ╟─cf2f0424-23bc-11ed-0a3e-45f85711e4c1
+# ╠═cf2f042e-23bc-11ed-32ae-dd969d3a46cb
+# ╟─cf2f044c-23bc-11ed-3931-d946219ee61c
+# ╠═cf2f0456-23bc-11ed-0353-4da660ca53ff
+# ╟─cf2f312e-23bc-11ed-0e8c-35b055880c14
+# ╟─cf2f3142-23bc-11ed-2b9c-93263102060d
+# ╠═cf2f314c-23bc-11ed-344e-e916c1adb459
+# ╟─cf2f6bee-23bc-11ed-37ed-97979e9d0872
+# ╟─cf2f6c02-23bc-11ed-02dc-89d5a450876c
+# ╟─cf2f6c16-23bc-11ed-30eb-69ed4f279765
+# ╟─cf2f6c48-23bc-11ed-09dd-f90cacc8452d
+# ╟─cf2f6c5c-23bc-11ed-3e65-5fc5b80e0169
+# ╠═cf2f6c66-23bc-11ed-34d0-297a00f938c1
+# ╠═cf2f9664-23bc-11ed-1360-c1f2c4971860
+# ╟─cf2fd3ae-23bc-11ed-368a-9519360368f2
+# ╟─cf2fd3ce-23bc-11ed-2157-e98c1a3486ff
+# ╠═cf2fd3d6-23bc-11ed-0450-bf5e4a78364f
 # ╟─00000000-0000-0000-0000-000000000001
 # ╟─00000000-0000-0000-0000-000000000002
