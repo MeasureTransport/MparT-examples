@@ -1,19 +1,18 @@
-# # Pytorch Integration 
-#
+# # Pytorch Integration
 # This example demonstrates how to train and use an MParT-based transport map 
 # in a larger pytorch model.  To illustrate, a regression problem with heteroscedastic
 # noise will be considered.  
-# 
+#
 # The goal of this problem is to characterize a conditional distribution $p(y|x)$,
 # where $x,y\in\mathbb{R}$.  To characterize this distribution, we will construct 
 # a conditional transport map of the form $T(y; f(x))$, where $f:\mathbb{R}\rightarrow\mathbb{R}^M$
 # is a feature extractor that returns an $M$ dimensional vector.  This feature extractor 
 # will be defined with a neural network (pytorch) while the map itself $T:\mathbb{R}^{M+1}\rightarrow\mathbb{R}$
 # is defined with a polynomial-based monotone map (MParT).
-# 
+
 import matplotlib.pyplot as plt
 import torch
-import mpart as mt 
+import mpart as mt
 
 
 # ## Generate Training Data 
@@ -30,9 +29,9 @@ num_epochs = 200
 
 # ##  Define the hybrid model
 
+maxDegree = 3 # <- The maximum total order of the map $T$
 tgt_dim = 1 # <- The dimension of the target random variable $y$
 cond_dim = 2 # <- The number of features $M$ returned by the neural network
-maxDegree = 3 # <- The maximum total order of the map $T$
 
 # #### MParT map Construction
 # Here we construct the 3->1 dimensional map in the typical fashion of MParT but 
@@ -64,7 +63,7 @@ class MapModel(torch.nn.Module):
 
         x = torch.hstack([x,y])
         r, logdet = self.tmap.forward(x)
-        
+
         return r, logdet
 
     def inverse(self, x, r):
@@ -121,18 +120,23 @@ for epoch in range(num_epochs):
         if (i % 200) == 0:
             print(f'Loss: {loss.item():0.4e}')
 
-
-
-
-print('Done training.  Now evaluating inverse for plotting.', flush=True)
+# Now that we've finished training, we can go ahead with plotting
 
 # ## Plot the results
 model.eval()
 
+# We plot the true function along with the training data accordingly.
+
+plt.plot(x_train,y_train,'.', label='Training Data',alpha=0.6, zorder=2)
+plt.plot(x_train,y_true,'-k',label='True $f(x)$',linewidth=3, zorder=2)
+plt.legend()
+
 num_plot = 200 
 x_plot = torch.linspace(-2.0*torch.pi, 2.0*torch.pi, num_plot, dtype=torch.double).reshape(-1,1)
 
-# Compute the median.  Possible because quantiles are preserved under monotone transformations in 1d
+# Since the map is monotone and real-valued, we can find the median and the quantiles directly
+
+# Compute the median.
 r = torch.zeros((num_plot,1), dtype=torch.double)
 median = model.inverse(x_plot,r)
 
@@ -147,9 +151,14 @@ q95 = model.inverse(x_plot,r)
 
 plt.fill_between(x_plot.ravel(),q05.ravel(),q95.ravel(), color='b', alpha=0.1, label='%5-95% CI', zorder=1)
 
-plt.plot(x_train,y_train,'.', label='Training Data',alpha=0.6, zorder=2)
-plt.plot(x_train,y_true,'-k',label='True $f(x)$',linewidth=3, zorder=2)
+# Finally, let's plot the median as well as some realizations of the noise
+
+num_samples_per_point = 10
+r = torch.randn((num_plot*num_samples_per_point,1), dtype=torch.double)
+xplot_rep = x_plot.repeat(num_samples_per_point, 1)
+samples = model.inverse(xplot_rep,r)
 
 plt.plot(x_plot, median, 'b', label='Median', linewidth=2, zorder=3)
+plt.scatter(xplot_rep, samples, s=1, color='b', alpha=0.1, label='Samples', zorder=1)
 plt.legend()
 plt.show()
