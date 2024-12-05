@@ -111,7 +111,7 @@ for epoch in range(num_epochs):
         ref, logdet = model(x_batch, y_batch)
 
         # Compute the negative log likelihood as a loss function
-        loss = -torch.mean(-ref*ref + logdet)  # <- proportional to negative log likelihood with standard normal reference distribution
+        loss = -torch.mean(-0.5*ref*ref + logdet)  # <- proportional to negative log likelihood with standard normal reference distribution
         loss.backward()
 
         # Adjust learning weights
